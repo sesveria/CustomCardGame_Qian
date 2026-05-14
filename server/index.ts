@@ -48,7 +48,7 @@ async function main(): Promise<void> {
   createWSServer(wss, userManager, lobbyManager);
 
   // ─── Bot Player ───
-  const bot = new BotPlayer();
+  const bot = new BotPlayer(lobbyManager);
   const existingBotId = userManager.findByNickname(bot.nickname);
   let botId: string;
   if (existingBotId) {
