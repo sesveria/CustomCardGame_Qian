@@ -62,8 +62,8 @@ const Lobby: React.FC = () => {
       }
     }));
 
-    unsubs.push(on('match_waiting', () => setMatchStatus('waiting'));
-    unsubs.push(on('match_timeout', () => setMatchStatus('idle'));
+    unsubs.push(on('match_waiting', () => setMatchStatus('waiting')));
+    unsubs.push(on('match_timeout', () => setMatchStatus('idle')));
 
     unsubs.push(on('game_start', (msg) => {
       if (msg.type === 'game_start') {
