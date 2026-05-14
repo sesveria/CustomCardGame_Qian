@@ -9,19 +9,16 @@ import { DeckStore } from './DeckStore.js';
 import { LobbyManager } from './LobbyManager.js';
 import { createWSServer } from './wsServer.js';
 import { ensureDefaultDecks } from './defaultDecks.js';
+import { BotPlayer } from './BotPlayer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// When running from dist-server/server/index.js, we need to go up TWO levels
-// to reach the project root. When running via tsx, only one level.
 function projectRoot(): string {
-  // If __dirname ends with /dist-server/server, we're in compiled mode
   if (__dirname.endsWith(path.join('dist-server', 'server')) ||
       __dirname.endsWith('dist-server\\server')) {
     return path.resolve(__dirname, '..', '..');
   }
-  // dev mode (tsx) — __dirname is server/
   return path.resolve(__dirname, '..');
 }
 
@@ -43,18 +40,31 @@ async function main(): Promise<void> {
   lobbyManager.setDecks(decks);
 
   const app = express();
-
-  // Static files
   app.use(express.static(distPath));
-
-  // SPA fallback — Express v5 syntax
-  app.get('/{*splat}', (_req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
+  app.get('/{*splat}', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server, path: '/ws' });
   createWSServer(wss, userManager, lobbyManager);
+
+  // ─── Bot Player ───
+  const bot = new BotPlayer();
+  const existingBotId = userManager.findByNickname(bot.nickname);
+  if (existingBotId) {
+    // Bot already registered from a previous run; just log it in
+    userManager.login(existingBotId, bot.nickname, bot.ws as any);
+  } else {
+    userManager.register(bot.nickname);
+    userManager.login(bot.userId, bot.nickname, bot.ws as any);
+  }
+  console.log(`  🤖 机器人已上线: ${bot.nickname}`);
+
+  // Bot auto-joins match queue when not in a game
+  setInterval(() => {
+    if (!lobbyManager.getRoomByUserId(bot.userId)) {
+      lobbyManager.joinMatchQueue(bot.userId);
+    }
+  }, 3000);
 
   const PORT = parseInt(process.env.PORT || '3000', 10);
   server.listen(PORT, '0.0.0.0', () => {
