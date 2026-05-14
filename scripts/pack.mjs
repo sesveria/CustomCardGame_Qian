@@ -11,7 +11,7 @@ const DIST = path.join(ROOT, 'dist');
 const SERVE = path.join(ROOT, 'scripts', 'serve.mjs');
 const START_CMD = path.join(ROOT, 'scripts', 'start.cmd');
 const START_SH = path.join(ROOT, 'scripts', 'start.sh');
-const OUT = path.join(ROOT, 'knowledge-card-game.zip');
+const OUT = path.join(ROOT, 'CustomCardGame_Qian.zip');
 
 // 1. Build
 console.log('🔨 Building...');
@@ -42,13 +42,13 @@ if (process.platform === 'win32') {
   try {
     execSync(`zip -r "${OUT}" .`, { cwd: DIST, stdio: 'inherit' });
   } catch {
-    console.log('⚠️  zip not found. Install zip or use: tar -czf knowledge-card-game.tar.gz -C dist .');
+    console.log('⚠️  zip not found. Install zip or use: tar -czf CustomCardGame_Qian.tar.gz -C dist .');
   }
 }
 
 if (fs.existsSync(OUT)) {
   const stat = fs.statSync(OUT);
-  console.log(`✅ 打包完成: knowledge-card-game.zip (${(stat.size / 1024).toFixed(0)} KB)`);
+  console.log(`✅ 打包完成: CustomCardGame_Qian.zip (${(stat.size / 1024).toFixed(0)} KB)`);
 } else {
   console.log('✅ 构建完成! dist/ 目录可以直接分发');
 }

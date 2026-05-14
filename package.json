@@ -1,5 +1,5 @@
 {
-  "name": "knowledge-card-game",
+  "name": "CustomCardGame_Qian",
   "version": "2.0.0",
   "description": "知识卡牌对战游戏 — 客户端/服务端联机架构",
   "type": "module",
@@ -12,7 +12,7 @@
     "server:dev": "npx tsx server/index.ts",
     "full:build": "npm run build && npm run server:build",
     "pack": "node scripts/pack.mjs",
-    "pack:zip": "npm run full:build && cd dist && zip -r ../knowledge-card-game.zip ."
+    "pack:zip": "npm run full:build && cd dist && zip -r ../CustomCardGame_Qian.zip ."
   },
   "dependencies": {
     "express": "^5.2.1",

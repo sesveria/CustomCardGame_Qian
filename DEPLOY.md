@@ -7,7 +7,7 @@
 在你的开发机器上：
 
 ```bash
-cd /home/gm/codex/knowledge-card-game
+cd /home/gm/codex/CustomCardGame_Qian
 npm install
 npm run full:build        # 前端 → dist/  后端 → dist-server/
 npm run pack              # 打包前端 ZIP（可选，发给 Windows 用户）
@@ -18,7 +18,7 @@ npm run pack              # 打包前端 ZIP（可选，发给 Windows 用户）
 ```
 dist/                     ← 前端静态文件（发给客户端的）
 dist-server/              ← 编译后的后端 JS（部署到服务器）
-knowledge-card-game.zip   ← 前端 ZIP 包（发给 Windows 用户双击 start.cmd）
+CustomCardGame_Qian.zip   ← 前端 ZIP 包（发给 Windows 用户双击 start.cmd）
 ```
 
 ---
@@ -32,8 +32,8 @@ knowledge-card-game.zip   ← 前端 ZIP 包（发给 Windows 用户双击 start
 ```bash
 # 把整个项目目录上传到服务器（可以先删掉 node_modules 减少体积）
 rsync -avz --exclude node_modules --exclude dist --exclude dist-server \
-  /home/gm/codex/knowledge-card-game/ \
-  user@你的服务器IP:/home/user/knowledge-card-game/
+  /home/gm/codex/CustomCardGame_Qian/ \
+  user@你的服务器IP:/home/user/CustomCardGame_Qian/
 ```
 
 ### 1.2 在服务器上安装依赖和构建
@@ -49,7 +49,7 @@ sudo apt install -y nodejs
 node -v   # 确认 ≥18
 
 # 进入项目目录
-cd /home/user/knowledge-card-game
+cd /home/user/CustomCardGame_Qian
 
 # 安装依赖
 npm install
@@ -107,7 +107,7 @@ sudo ufw allow 3000/tcp
 把卡组 JSON 文件放入服务器上的 `server/data/decks/` 目录，然后重启：
 
 ```bash
-cp 我的卡组.json /home/user/knowledge-card-game/server/data/decks/
+cp 我的卡组.json /home/user/CustomCardGame_Qian/server/data/decks/
 pm2 restart card-game
 ```
 
@@ -138,7 +138,7 @@ http://你的服务器IP:3000
 **接收方操作步骤：**
 
 1. 安装 [Node.js](https://nodejs.org)（18+，下载 Windows 安装包，一路下一步）
-2. 把 `knowledge-card-game.zip` 发给对方
+2. 把 `CustomCardGame_Qian.zip` 发给对方
 3. 对方解压到任意文件夹（比如桌面）
 4. **双击 `start.cmd`**
 5. 浏览器自动打开或手动打开 `http://localhost:3000`
@@ -171,12 +171,12 @@ bash start.sh 8080       # 自定义端口
 
 ```bash
 # 终端 1 — 前端热更新
-cd /home/gm/codex/knowledge-card-game
+cd /home/gm/codex/CustomCardGame_Qian
 npm run dev
 # → http://localhost:5173
 
 # 终端 2 — 后端热重载
-cd /home/gm/codex/knowledge-card-game
+cd /home/gm/codex/CustomCardGame_Qian
 npm run server:dev
 # → http://localhost:3000 (WebSocket /ws)
 ```

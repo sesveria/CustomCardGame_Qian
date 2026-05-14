@@ -19,7 +19,7 @@
 ## 📦 Part A — 服务器部署 (Linux/macOS)
 
 ```bash
-cd knowledge-card-game
+cd CustomCardGame_Qian
 npm install
 npm run full:build
 npm run server:start        # → http://0.0.0.0:3000
@@ -52,7 +52,7 @@ http://你的服务器IP:3000
 如果你**没有服务器**，只想在本机体验编辑器，或者你的 Windows 机器就是服务器:
 
 1. 安装 [Node.js](https://nodejs.org) (18+)
-2. 解压 `knowledge-card-game.zip`
+2. 解压 `CustomCardGame_Qian.zip`
 3. 双击 `start.cmd`
 4. 浏览器打开 `http://localhost:3000`
 
@@ -80,7 +80,7 @@ node serve.mjs 8080     # 自定义端口
 npm run pack
 ```
 
-生成 `knowledge-card-game.zip` (~85 KB)，内含:
+生成 `CustomCardGame_Qian.zip` (~85 KB)，内含:
 - 前端静态文件
 - `serve.mjs` — Node.js 迷你服务器
 - `start.cmd` — Windows 双击启动
@@ -146,7 +146,7 @@ After=network.target
 [Service]
 Type=simple
 User=you
-WorkingDirectory=/path/to/knowledge-card-game
+WorkingDirectory=/path/to/CustomCardGame_Qian
 ExecStart=/usr/bin/node dist-server/server/index.js
 Restart=on-failure
 [Install]
