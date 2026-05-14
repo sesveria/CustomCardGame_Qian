@@ -50,19 +50,25 @@ async function main(): Promise<void> {
   // ─── Bot Player ───
   const bot = new BotPlayer();
   const existingBotId = userManager.findByNickname(bot.nickname);
+  let botId: string;
   if (existingBotId) {
-    // Bot already registered from a previous run; just log it in
-    userManager.login(existingBotId, bot.nickname, bot.ws as any);
+    botId = existingBotId;
   } else {
-    userManager.register(bot.nickname);
-    userManager.login(bot.userId, bot.nickname, bot.ws as any);
+    const info = userManager.register(bot.nickname);
+    botId = info.userId;
   }
-  console.log(`  🤖 机器人已上线: ${bot.nickname}`);
+  // Important: use the consistent botId for login, not bot.userId
+  userManager.login(botId, bot.nickname, bot.ws as any);
+
+  // Fix: BotPlayer must use the server-assigned userId, not the one in its constructor
+  bot.userId = botId;
+  
+  console.log(`  🤖 机器人已上线: ${bot.nickname} (${botId})`);
 
   // Bot auto-joins match queue when not in a game
   setInterval(() => {
-    if (!lobbyManager.getRoomByUserId(bot.userId)) {
-      lobbyManager.joinMatchQueue(bot.userId);
+    if (!lobbyManager.getRoomByUserId(botId)) {
+      lobbyManager.joinMatchQueue(botId);
     }
   }, 3000);
 

@@ -62,8 +62,8 @@ const Lobby: React.FC = () => {
       }
     }));
 
-    unsubs.push(on('match_waiting', () => setMatchStatus('waiting')));
-    unsubs.push(on('match_timeout', () => setMatchStatus('idle')));
+    unsubs.push(on('match_waiting', () => setMatchStatus('waiting'));
+    unsubs.push(on('match_timeout', () => setMatchStatus('idle'));
 
     unsubs.push(on('game_start', (msg) => {
       if (msg.type === 'game_start') {
@@ -77,14 +77,28 @@ const Lobby: React.FC = () => {
       setTimeout(() => setError(''), 3000);
     }));
 
-    // Request friend list on mount
-    setTimeout(() => send({ type: 'friend_list' }), 300);
+    // Request friend list and player list on mount
+    setTimeout(() => {
+      send({ type: 'friend_list' });
+    }, 300);
 
     return () => unsubs.forEach((u) => u());
   }, []);
 
   const handleMatch = () => { setMatchStatus('waiting'); send({ type: 'match_start' }); };
   const handleCancelMatch = () => { send({ type: 'match_cancel' }); setMatchStatus('idle'); };
+  
+  const handleVsBot = () => {
+    // Find bot by nickname and invite
+    const bot = onlinePlayers.find(p => p.nickname === '🤖 机器人');
+    if (bot) {
+      send({ type: 'invite_send', target: '🤖 机器人' });
+    } else {
+      setError('机器人未在线');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   const handleInvite = () => {
     if (!inviteTarget.trim()) return;
     send({ type: 'invite_send', target: inviteTarget.trim() });
@@ -98,6 +112,8 @@ const Lobby: React.FC = () => {
     if (pendingInvite) send({ type: 'invite_decline', inviterId: pendingInvite.id });
     setPendingInvite(null);
   };
+
+  const isBot = (p: { nickname: string }) => p.nickname === '🤖 机器人';
 
   return (
     <div className="page page-lobby">
@@ -131,7 +147,7 @@ const Lobby: React.FC = () => {
           <div className="lobby-list">
             {friends.map((f) => (
               <div key={f.userId} className={`lobby-item ${f.online ? 'online' : 'offline'}`}>
-                <span>{f.online ? '🟢' : '⚫'} {f.nickname}</span>
+                <span>{f.online ? '🟢' : '⚫'} {f.nickname} {isBot(f) ? '🤖' : ''}</span>
                 {f.online && (
                   <button
                     className="btn btn-sm btn-secondary"
@@ -151,7 +167,7 @@ const Lobby: React.FC = () => {
           <div className="lobby-list">
             {onlinePlayers.filter((p) => p.userId !== myId).map((p) => (
               <div key={p.userId} className="lobby-item online">
-                <span>🟢 {p.nickname}</span>
+                <span>🟢 {p.nickname} {isBot(p) ? '🤖' : ''}</span>
                 <button
                   className="btn btn-sm btn-secondary"
                   onClick={() => send({ type: 'invite_send', target: p.nickname })}
@@ -169,10 +185,17 @@ const Lobby: React.FC = () => {
         <div className="lobby-panel lobby-match-panel">
           <h3>⚔️ 对战</h3>
           <p style={{ color: '#888', fontSize: 13, marginBottom: 12 }}>
-            随机匹配在线玩家，BO3 三局两胜制
+            与机器人对战（自动接邀），或随机匹配在线玩家
           </p>
+          
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 12 }}>
+            <button className="btn btn-primary btn-large" onClick={handleVsBot}>
+              🤖 对战机器人
+            </button>
+          </div>
+
           {matchStatus === 'idle' && (
-            <button className="btn btn-primary btn-large" onClick={handleMatch}>
+            <button className="btn btn-secondary btn-large" onClick={handleMatch}>
               🎲 随机匹配
             </button>
           )}
