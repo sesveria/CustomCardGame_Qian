@@ -28,7 +28,9 @@ export function createWSServer(
             userId = newId;
             userManager.login(newId, nickname, ws);
             send({ type: 'auth_ok', userId: newId, nickname });
+            // Tell everyone else about the new player, AND give the new player the full list
             broadcastOnlineUsers(wss, userManager, ws);
+            send({ type: 'player_list', players: userManager.getAllOnlinePlayers() });
             return;
           } catch (e: any) { send({ type: 'auth_error', reason: e.message }); return; }
         }
@@ -48,7 +50,9 @@ export function createWSServer(
         if (!ok) { send({ type: 'auth_error', reason: '登录失败' }); return; }
         const user = userManager.getUser(userId);
         send({ type: 'auth_ok', userId, nickname: user?.nickname ?? msg.nickname });
+        // Tell everyone else about the new player, AND give the new player the full list
         broadcastOnlineUsers(wss, userManager, ws);
+        send({ type: 'player_list', players: userManager.getAllOnlinePlayers() });
         return;
       }
 

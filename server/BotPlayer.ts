@@ -1,36 +1,27 @@
 import WebSocket from 'ws';
 import { v4 as uuid } from 'uuid';
 import type { ClientMessage, ServerMessage, GameStateForPlayer, Card, PlayerSlot } from '../shared/protocol.js';
+import type { LobbyManager } from './LobbyManager.js';
 
 // ─── Fake WebSocket for the bot ───
+// Used only for receiving server→bot messages via .send()
+// Bot→server actions go through direct LobbyManager/GameRoom calls, not WS.
 
 class BotWebSocket {
   readyState: number = WebSocket.OPEN;
-  private _messageHandlers: Array<(raw: Buffer) => void> = [];
   private _closeHandlers: Array<() => void> = [];
   _onServerMsg: ((msg: ServerMessage) => void) | null = null;
 
-  on(event: string, handler: (...args: any[]) => void): void {
-    if (event === 'message') this._messageHandlers.push(handler);
-    if (event === 'close') this._closeHandlers.push(handler);
-  }
-
-  // Server → Bot: called by server code to send a message TO the bot
+  // Server → Bot: server code calls this to send a message TO the bot
   send(data: string): void {
     let msg: ServerMessage;
     try { msg = JSON.parse(data); } catch { return; }
     this._onServerMsg?.(msg);
   }
 
-  // Bot → Server: called by bot to send a message TO the server
-  emitServer(msg: ClientMessage): void {
-    const data = Buffer.from(JSON.stringify(msg));
-    for (const h of this._messageHandlers) h(data);
-  }
-
+  // Not used for bot→server; kept for interface compatibility
+  on(_event: string, _handler: (...args: any[]) => void): void {}
   close(): void {}
-
-  // WebSocket constants
   static readonly OPEN = 1;
 }
 
@@ -89,8 +80,6 @@ class BotAI {
           s({ type: 'game_dismiss_popup' });
         }
         break;
-
-      // round_over and match_over are passive — bot just watches
     }
   }
 
@@ -107,22 +96,38 @@ export class BotPlayer {
   nickname = '🤖 机器人';
   ws: BotWebSocket;
   private ai: BotAI;
+  private lobbyManager: LobbyManager;
 
-  constructor() {
+  constructor(lobbyManager: LobbyManager) {
     this.userId = 'bot_' + uuid().substring(0, 6);
     this.ws = new BotWebSocket();
     this.ai = new BotAI();
+    this.lobbyManager = lobbyManager;
 
-    this.ai.bind((msg) => this.ws.emitServer(msg));
+    // Bot→server: actions go directly to GameRoom, not through WS
+    this.ai.bind((msg) => {
+      const room = this.lobbyManager.getRoomByUserId(this.userId);
+      if (!room) return;
 
+      switch (msg.type) {
+        case 'game_coin_guess': room.submitCoinGuess(this.userId, msg.guess); break;
+        case 'game_select_deck': room.selectDeck(this.userId, msg.deckId); break;
+        case 'game_pick_hand': room.pickHandCard(this.userId, msg.cardId); break;
+        case 'game_pick_public': room.pickPublicCard(this.userId, msg.cardId); break;
+        case 'game_dismiss_popup': room.dismissPopup(this.userId); break;
+        case 'game_concede': room.concede(this.userId); break;
+      }
+    });
+
+    // Server→bot: handle incoming messages
     this.ws._onServerMsg = (msg: ServerMessage) => {
       if (msg.type === 'invite_received') {
-        // Auto-accept after a tiny delay
-        setTimeout(() => this.ws.emitServer({ type: 'invite_accept', inviterId: msg.inviterId }), 400);
+        // Auto-accept after small delay
+        setTimeout(() => {
+          this.lobbyManager.acceptInvite(this.userId, msg.inviterId);
+        }, 400);
       } else if (msg.type === 'game_start' || msg.type === 'game_state') {
         this.ai.handleState(msg.state);
-      } else if (msg.type === 'match_found') {
-        // Ready — game_start will follow shortly
       }
     };
   }
