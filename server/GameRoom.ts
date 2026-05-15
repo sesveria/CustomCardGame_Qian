@@ -51,7 +51,7 @@ function findAnyMatchingRelation(card: Card, pool: Card[], relations: Relation[]
 function recalcSettlementScore(
   settlement: Card[],
   relations: Relation[],
-  relScores: Record<string, number>,
+  _relScores: Record<string, number>,
 ): number {
   let total = 0;
   for (const r of relations) {
@@ -74,7 +74,7 @@ function opp(p: PlayerSlot): PlayerSlot {
   return p === 'player1' ? 'player2' : 'player1';
 }
 
-type RoomPhaseType = 'coin_toss' | 'deck_select' | 'playing' | 'round_over' | 'match_over';
+type RoomPhaseType = 'coin_toss' | 'deck_select' | 'playing' | 'match_over';
 
 export class GameRoom {
   id: string;
@@ -85,7 +85,6 @@ export class GameRoom {
   private decks: Record<string, Deck> = {};
 
   round: number = 0;
-  roundWins: [number, number] = [0, 0];
   deckSelector: PlayerSlot = 'player1';
   phase: RoomPhaseType = 'coin_toss';
   gameState: FullGameState | null = null;
@@ -95,7 +94,6 @@ export class GameRoom {
   coinTimer: NodeJS.Timeout | null = null;
   selectedDecks: Partial<Record<PlayerSlot, string>> = {};
 
-  private onRoundEnd: ((winnerId: string) => void) | null = null;
   private onMatchEnd: ((winnerId: string | null) => void) | null = null;
 
   private botUserId: string | null = null;
@@ -122,10 +120,9 @@ export class GameRoom {
   setDeck(id: string, deck: Deck): void { this.decks[id] = deck; }
 
   setCallbacks(
-    onRoundEnd: (winnerId: string) => void,
+    _onRoundEnd: (winnerId: string) => void,
     onMatchEnd: (winnerId: string | null) => void,
   ): void {
-    this.onRoundEnd = onRoundEnd;
     this.onMatchEnd = onMatchEnd;
   }
 
@@ -134,7 +131,6 @@ export class GameRoom {
     this.coinGuesses = {};
     this.phase = 'coin_toss';
     this.round = 0;
-    this.roundWins = [0, 0];
     if (this.coinTimer) clearTimeout(this.coinTimer);
     this.coinTimer = setTimeout(() => this.resolveCoinToss(), 30_000);
     this.pushBoth();
@@ -169,7 +165,7 @@ export class GameRoom {
     if (!this.selectedDecks[oppSlot]) {
       this.selectedDecks[oppSlot] = this.deckIds.find(d => d !== deckId) ?? deckId;
     }
-    this.round++;
+    this.round = 1;
     this.startRound();
   }
 
@@ -199,6 +195,13 @@ export class GameRoom {
       discardedCardId: null,
     };
     this.phase = 'playing';
+
+    // Check if current player has no hand cards (shouldn't happen at game start, but be safe)
+    if ((this.gameState.hands[this.gameState.currentPlayer] ?? []).length === 0) {
+      this.endGame();
+      return;
+    }
+
     this.pushBoth();
   }
 
@@ -206,7 +209,7 @@ export class GameRoom {
     const slot = this.slot(playerId);
     const gs = this.gameState;
     if (!slot || !gs || gs.phase !== 'selecting-card' || gs.currentPlayer !== slot) return;
-    if (gs.isDiscarding) return; // can't pick hand during discard phase
+    if (gs.isDiscarding) return;
     const card = gs.hands[slot].find(c => c.id === cardId);
     if (!card) return;
     gs.selectedHandCard = card;
@@ -222,10 +225,8 @@ export class GameRoom {
     if (gs.isDiscarding) {
       const poolCard = gs.publicPool.find(c => c.id === cardId);
       if (!poolCard) return;
-      // Cannot pick the card you just discarded
       if (cardId === gs.discardedCardId) return;
 
-      // Move pool card to hand
       gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
       gs.hands[slot].push(poolCard);
 
@@ -246,50 +247,41 @@ export class GameRoom {
     const handCard = gs.selectedHandCard;
     const relation = findRelation(handCard, publicCard, gs.deck.relations);
 
+    // Whether match or not: BOTH cards go to settlement
+    // Remove hand card from hand
+    gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
+    // Remove public card from pool
+    gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
+
+    // Add both to settlement
+    gs.settlement[slot].push(handCard);
+    gs.settlement[slot].push(publicCard);
+
+    // Recalc settlement score for this player
+    gs.scores[slot] = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
+
     if (relation) {
-      // Matching success: both cards go to settlement
-      const score = relation.score ?? (RELATION_SCORES[relation.type] ?? 3);
-
-      gs.settlement[slot].push(handCard);
-      gs.settlement[slot].push(publicCard);
-
-      gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
-      gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
-
       gs.matchedPairs.push({
         cardA: handCard.name, cardB: publicCard.name,
         relationType: relation.type, explanation: relation.explanation, player: slot,
       });
-
-      gs.scores[slot] = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
-
-      // Refill public pool from draw pile (1 card)
-      const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
-      gs.drawPile = remaining;
-      gs.publicPool = [...gs.publicPool, ...drawn];
-
-      gs.selectedHandCard = null;
+      const score = relation.score ?? (RELATION_SCORES[relation.type] ?? 3);
       gs.lastMatchResult = { success: true, relation, explanation: relation.explanation, score };
-
-      if (gs.hands[slot].length === 0) {
-        this.endRound();
-        return;
-      }
     } else {
-      // No match: hand card goes to settlement (NOT to pool), recalc score
-      gs.settlement[slot].push(handCard);
-      gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
+      gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，双方卡牌进入结算区' };
+    }
 
-      // Recalculate settlement score
-      gs.scores[slot] = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
+    // Refill public pool from draw pile (1 card)
+    const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
+    gs.drawPile = remaining;
+    gs.publicPool = [...gs.publicPool, ...drawn];
 
-      gs.selectedHandCard = null;
-      gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，手牌进入结算区' };
+    gs.selectedHandCard = null;
 
-      if (gs.hands[slot].length === 0) {
-        this.endRound();
-        return;
-      }
+    // Check if current player has no hand cards → game over
+    if (gs.hands[slot].length === 0) {
+      this.endGame();
+      return;
     }
 
     gs.phase = 'matching';
@@ -302,15 +294,13 @@ export class GameRoom {
     const gs = this.gameState;
     if (!slot || !gs || gs.phase !== 'selecting-card' || gs.currentPlayer !== slot) return;
     if (!gs.selectedHandCard) return;
-    if (gs.publicPool.length === 0) return; // nothing to swap with
+    if (gs.publicPool.length === 0) return;
 
     const handCard = gs.selectedHandCard;
 
-    // Move hand card to pool
     gs.publicPool.push(handCard);
     gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
 
-    // Enter discard-pick mode
     gs.selectedHandCard = null;
     gs.isDiscarding = true;
     gs.discardedCardId = handCard.id;
@@ -324,37 +314,36 @@ export class GameRoom {
     if (!slot || !gs || gs.phase !== 'matching' || gs.currentPlayer !== slot) return;
 
     gs.lastMatchResult = null;
+
+    // Switch turn
     gs.currentPlayer = opp(slot);
+
+    // Check if the next player has no hand cards → game over
+    if ((gs.hands[gs.currentPlayer] ?? []).length === 0) {
+      this.endGame();
+      return;
+    }
+
     gs.phase = 'selecting-card';
     this.pushBoth();
   }
 
-  private endRound(): void {
+  private endGame(): void {
     const gs = this.gameState;
     if (!gs) return;
 
     gs.phase = 'round_over';
-    this.phase = 'round_over';
+    this.phase = 'match_over';
 
-    let wId: string | null = null;
+    let winnerId: string | null = null;
     if (gs.scores.player1 > gs.scores.player2) {
-      this.roundWins[0]++;
-      wId = this.players[0];
+      winnerId = this.players[0];
     } else if (gs.scores.player2 > gs.scores.player1) {
-      this.roundWins[1]++;
-      wId = this.players[1];
+      winnerId = this.players[1];
     }
 
     this.pushBoth();
-
-    if (this.roundWins[0] >= 2 || this.roundWins[1] >= 2 || this.round >= 3) {
-      this.phase = 'match_over';
-      const mw = this.roundWins[0] > this.roundWins[1] ? this.players[0]
-               : this.roundWins[1] > this.roundWins[0] ? this.players[1] : null;
-      this.onMatchEnd?.(mw);
-      return;
-    }
-    this.onRoundEnd?.(wId ?? this.players[0]);
+    this.onMatchEnd?.(winnerId);
   }
 
   concede(playerId: string): void {
@@ -364,14 +353,6 @@ export class GameRoom {
     const winnerId = this.players[winner === 'player1' ? 0 : 1];
     this.phase = 'match_over';
     this.onMatchEnd?.(winnerId);
-  }
-
-  prepareNextRound(): void {
-    this.gameState = null;
-    this.deckSelector = opp(this.deckSelector);
-    this.selectedDecks = {};
-    this.phase = 'deck_select';
-    this.pushBoth();
   }
 
   finishMatch(): void {
@@ -415,8 +396,8 @@ export class GameRoom {
       mySettlement: [], opponentSettlement: [],
       lastMatchResult: null, matchedPairs: [],
       roundNumber: this.round,
-      myRoundWins: slot === 'player1' ? this.roundWins[0] : this.roundWins[1],
-      opponentRoundWins: slot === 'player1' ? this.roundWins[1] : this.roundWins[0],
+      myRoundWins: 0,
+      opponentRoundWins: 0,
       deckSelector: this.deckSelector,
       availableDeckIds: this.deckIds,
       myDeckId: this.selectedDecks[slot] ?? null,
