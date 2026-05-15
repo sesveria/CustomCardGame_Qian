@@ -254,6 +254,7 @@ export class GameRoom {
   }
 
   prepareNextRound(): void {
+    this.gameState = null;
     this.deckSelector = opp(this.deckSelector);
     this.selectedDecks = {};
     this.phase = 'deck_select';
