@@ -12,7 +12,7 @@ export interface GameStateForPlayer {
   myScore: number; opponentScore: number; lastMatchResult: MatchResult | null; matchedPairs: MatchedPairPublic[];
   roundNumber: number; myRoundWins: number; opponentRoundWins: number; deckSelector: PlayerSlot;
   availableDeckIds: string[]; myDeckId: string | null; opponentDeckId: string | null;
-  coinResult?: "heads" | "tails"; coinGuessed?: boolean; coinMyGuess?: "heads" | "tails"; mySlot: "player1" | "player2";
+  coinResult?: 'heads' | 'tails'; coinGuessed?: boolean; coinMyGuess?: 'heads' | 'tails'; mySlot: 'player1' | 'player2';
 }
 export interface MatchResult { success: boolean; relation?: Relation; explanation?: string; score: number; }
 export interface MatchedPairPublic { cardA: string; cardB: string; relationType: string; explanation: string; player: PlayerSlot; }
@@ -20,6 +20,7 @@ export interface FriendInfo { userId: string; nickname: string; online: boolean;
 export type ClientMessage =
   | { type: 'auth_login'; nickname: string; password?: string } | { type: 'auth_register'; nickname: string; password?: string }
   | { type: 'friend_add'; target: string } | { type: 'friend_list' } | { type: 'match_start' } | { type: 'match_cancel' }
+  | { type: 'match_vs_bot' }
   | { type: 'invite_send'; target: string } | { type: 'invite_accept'; inviterId: string } | { type: 'invite_decline'; inviterId: string }
   | { type: 'game_coin_guess'; guess: 'heads' | 'tails' } | { type: 'game_select_deck'; deckId: string }
   | { type: 'game_pick_hand'; cardId: string } | { type: 'game_pick_public'; cardId: string }

@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import { v4 as uuid } from 'uuid';
 import { UserManager } from './UserManager.js';
 import { GameRoom } from './GameRoom.js';
-import type { Deck } from '../shared/protocol.js';
+import type { Deck, GameStateForPlayer } from '../shared/protocol.js';
 
 export class LobbyManager {
   private matchQueue: string[] = [];
@@ -85,6 +85,39 @@ export class LobbyManager {
     if (inv) { clearTimeout(inv.timer); this.pendingInvites.delete(key); }
     const ws = this.userManager.getWS(inviterId);
     if (ws) ws.send(JSON.stringify({ type: 'invite_cancelled', inviterId }));
+  }
+
+  createBotRoom(
+    playerId: string,
+    onBotState: (state: GameStateForPlayer) => void,
+    onBotAction: (msg: any) => void,
+  ): GameRoom | { error: string } {
+    const user = this.userManager.getUser(playerId);
+    const ws = this.userManager.getWS(playerId);
+    if (!user || !ws) return { error: '玩家不可用' };
+    if (this.getRoomByUserId(playerId)) return { error: '你已在游戏中' };
+
+    const botUserId = 'bot_' + uuid().substring(0, 6);
+    const roomId = 'room_' + uuid().substring(0, 6);
+
+    // Create a dummy bot WebSocket — it will never be used to send
+    const botWs = new WebSocket(null);
+    // Override readyState so it's OPEN (won't crash GameRoom.send)
+    Object.defineProperty(botWs, 'readyState', { value: WebSocket.OPEN, writable: true });
+
+    const room = new GameRoom(roomId, playerId, user.nickname, ws, botUserId, '🤖 机器人', botWs, this.deckIds);
+    room.markBot(botUserId, onBotState);
+
+    for (const d of this.userDecks) room.setDeck(d.meta.name, d);
+
+    room.setCallbacks(
+      (_winnerId) => room.prepareNextRound(),
+      (_winnerId) => { room.finishMatch(); this.activeRooms.delete(roomId); },
+    );
+
+    this.activeRooms.set(roomId, room);
+    room.startMatch();
+    return room;
   }
 
   private createRoom(p1: string, p2: string): GameRoom {

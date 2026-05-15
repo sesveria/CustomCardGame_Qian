@@ -1,0 +1,68 @@
+import type { GameStateForPlayer, Card, PlayerSlot, ClientMessage } from '../shared/protocol.js';
+
+/**
+ * Pure AI logic — no WebSocket, no fake session.
+ * Driven by GameRoom which calls handleState(pushState) on each server push.
+ * AI actions are returned via callback and sent directly to GameRoom methods.
+ */
+export class BotAI {
+  private game: GameStateForPlayer | null = null;
+  private onAction: ((msg: ClientMessage) => void) | null = null;
+  private timer: NodeJS.Timeout | null = null;
+
+  bind(onAction: (msg: ClientMessage) => void): void {
+    this.onAction = onAction;
+  }
+
+  handleState(state: GameStateForPlayer): void {
+    this.game = state;
+    if (this.timer) clearTimeout(this.timer);
+
+    const delay = 600 + Math.random() * 1000; // 0.6–1.6s
+    this.timer = setTimeout(() => this.act(), delay);
+  }
+
+  private act(): void {
+    const g = this.game;
+    const s = this.onAction;
+    if (!g || !s) return;
+
+    switch (g.phase) {
+      case 'coin_toss':
+        if (!g.coinGuessed) {
+          const guess: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
+          s({ type: 'game_coin_guess', guess });
+        }
+        break;
+
+      case 'deck_select':
+        if (g.deckSelector === g.mySlot) {
+          const idx = Math.floor(Math.random() * g.availableDeckIds.length);
+          s({ type: 'game_select_deck', deckId: g.availableDeckIds[idx] });
+        }
+        break;
+
+      case 'selecting-card': {
+        const isMe = g.currentPlayer === g.mySlot;
+        if (isMe && g.myHand.length > 0 && g.publicPool.length > 0) {
+          const hc = g.myHand[Math.floor(Math.random() * g.myHand.length)];
+          const pc = g.publicPool[Math.floor(Math.random() * g.publicPool.length)];
+          s({ type: 'game_pick_hand', cardId: hc.id });
+          setTimeout(() => s({ type: 'game_pick_public', cardId: pc.id }), 400);
+        }
+        break;
+      }
+
+      case 'matching':
+        if (g.currentPlayer === g.mySlot) {
+          s({ type: 'game_dismiss_popup' });
+        }
+        break;
+    }
+  }
+
+  reset(): void {
+    this.game = null;
+    if (this.timer) clearTimeout(this.timer);
+  }
+}
