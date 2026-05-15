@@ -9,7 +9,6 @@ import { DeckStore } from './DeckStore.js';
 import { LobbyManager } from './LobbyManager.js';
 import { createWSServer } from './wsServer.js';
 import { ensureDefaultDecks } from './defaultDecks.js';
-import { BotPlayer } from './BotPlayer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,31 +46,6 @@ async function main(): Promise<void> {
   const wss = new WebSocketServer({ server, path: '/ws' });
   createWSServer(wss, userManager, lobbyManager);
 
-  // ─── Bot Player ───
-  const bot = new BotPlayer(lobbyManager);
-  const existingBotId = userManager.findByNickname(bot.nickname);
-  let botId: string;
-  if (existingBotId) {
-    botId = existingBotId;
-  } else {
-    const info = userManager.register(bot.nickname);
-    botId = info.userId;
-  }
-  // Important: use the consistent botId for login, not bot.userId
-  userManager.login(botId, bot.nickname, bot.ws as any);
-
-  // Fix: BotPlayer must use the server-assigned userId, not the one in its constructor
-  bot.userId = botId;
-  
-  console.log(`  🤖 机器人已上线: ${bot.nickname} (${botId})`);
-
-  // Bot auto-joins match queue when not in a game
-  setInterval(() => {
-    if (!lobbyManager.getRoomByUserId(botId)) {
-      lobbyManager.joinMatchQueue(botId);
-    }
-  }, 3000);
-
   const PORT = parseInt(process.env.PORT || '3000', 10);
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🃏 知识卡牌对战服务器已启动!`);
@@ -79,7 +53,8 @@ async function main(): Promise<void> {
     console.log(`   前端文件: ${distPath}`);
     console.log(`   HTTP + WebSocket: http://0.0.0.0:${PORT}`);
     console.log(`   WebSocket: ws://0.0.0.0:${PORT}/ws`);
-    console.log(`   卡组: ${deckIds.length} 个\n`);
+    console.log(`   卡组: ${deckIds.length} 个`);
+    console.log(`   🤖 与机器人对战: 点击大厅的"对战机器人"按钮\n`);
   });
 }
 

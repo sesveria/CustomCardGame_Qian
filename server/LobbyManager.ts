@@ -2,7 +2,8 @@ import WebSocket from 'ws';
 import { v4 as uuid } from 'uuid';
 import { UserManager } from './UserManager.js';
 import { GameRoom } from './GameRoom.js';
-import type { Deck, GameStateForPlayer } from '../shared/protocol.js';
+import { BotAI } from './BotAI.js';
+import type { Deck, GameStateForPlayer, ClientMessage } from '../shared/protocol.js';
 
 export class LobbyManager {
   private matchQueue: string[] = [];
@@ -87,11 +88,7 @@ export class LobbyManager {
     if (ws) ws.send(JSON.stringify({ type: 'invite_cancelled', inviterId }));
   }
 
-  createBotRoom(
-    playerId: string,
-    onBotState: (state: GameStateForPlayer) => void,
-    onBotAction: (msg: any) => void,
-  ): GameRoom | { error: string } {
+  createBotRoom(playerId: string): GameRoom | { error: string } {
     const user = this.userManager.getUser(playerId);
     const ws = this.userManager.getWS(playerId);
     if (!user || !ws) return { error: '玩家不可用' };
@@ -100,13 +97,27 @@ export class LobbyManager {
     const botUserId = 'bot_' + uuid().substring(0, 6);
     const roomId = 'room_' + uuid().substring(0, 6);
 
-    // Create a dummy bot WebSocket — it will never be used to send
-    const botWs = new WebSocket(null);
-    // Override readyState so it's OPEN (won't crash GameRoom.send)
-    Object.defineProperty(botWs, 'readyState', { value: WebSocket.OPEN, writable: true });
+    // Create the room with a dummy bot ws placeholder
+    const botWs = { readyState: WebSocket.OPEN, send: () => {} } as any;
+    const room = new GameRoom(
+      roomId, playerId, user.nickname, ws,
+      botUserId, '🤖 机器人', botWs,
+      this.deckIds,
+    );
 
-    const room = new GameRoom(roomId, playerId, user.nickname, ws, botUserId, '🤖 机器人', botWs, this.deckIds);
-    room.markBot(botUserId, onBotState);
+    // Create and wire BotAI
+    const botAi = new BotAI();
+    botAi.bind((msg: ClientMessage) => {
+      switch (msg.type) {
+        case 'game_coin_guess': room.submitCoinGuess(botUserId, msg.guess); break;
+        case 'game_select_deck': room.selectDeck(botUserId, msg.deckId); break;
+        case 'game_pick_hand': room.pickHandCard(botUserId, msg.cardId); break;
+        case 'game_pick_public': room.pickPublicCard(botUserId, msg.cardId); break;
+        case 'game_dismiss_popup': room.dismissPopup(botUserId); break;
+      }
+    });
+
+    room.markBot(botUserId, (state) => botAi.handleState(state));
 
     for (const d of this.userDecks) room.setDeck(d.meta.name, d);
 

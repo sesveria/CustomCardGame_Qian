@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useConnection } from '../store/connection';
@@ -9,7 +9,19 @@ import type { GameStateForPlayer } from '../engine/types';
 const Game: React.FC = () => {
   const navigate = useNavigate();
   const game = useGameStore((s) => s.game);
+  const setGame = useGameStore((s) => s.setGame);
   const send = useConnection((s) => s.send);
+  const on = useConnection((s) => s.on);
+
+  // Register game_state listener so this page receives state pushes from the server
+  useEffect(() => {
+    const unsub = on('game_state', (msg) => {
+      if (msg.type === 'game_state') {
+        setGame(msg.state);
+      }
+    });
+    return unsub;
+  }, []);
 
   if (!game) {
     return (
@@ -35,62 +47,37 @@ const Game: React.FC = () => {
           <span className="sb-name">你</span>
           <span className="sb-score">{game.myScore}</span>
           {game.roundNumber > 0 && (
-            <span className="sb-round-wins">🏆×{game.myRoundWins}</span>
+            <span className="sb-round"> (第{game.roundNumber}局 {game.myRoundWins}胜)</span>
           )}
         </div>
-        <div className="sb-center">
-          <div className="sb-turn">
-            {game.currentPlayer && (
-              <span className="sb-turn-label">
-                {game.currentPlayer === game.mySlot ? '你的回合' : '对手的回合'}
-              </span>
-            )}
-          </div>
-          <div className="sb-pile">牌堆: {game.drawPileCount}</div>
-          {game.roundNumber > 0 && (
-            <div className="sb-round">Round {game.roundNumber}/3</div>
-          )}
-        </div>
+        <div className="sb-vs">VS</div>
         <div className="sb-player">
-          <span className="sb-icon">👤</span>
+          <span className="sb-icon">🤖</span>
           <span className="sb-name">对手</span>
           <span className="sb-score">{game.opponentScore}</span>
           {game.roundNumber > 0 && (
-            <span className="sb-round-wins">🏆×{game.opponentRoundWins}</span>
+            <span className="sb-round"> ({game.opponentRoundWins}胜 第{game.roundNumber}局)</span>
           )}
         </div>
       </div>
 
-      {/* Coin Toss — first picker locks, opponent auto-assigned opposite */}
+      {/* Coin Toss */}
       {displayPhase === 'coin_toss' && (
         <div className="popup-overlay">
-          <div className="popup">
+          <div className="popup popup-coin">
             <div className="popup-icon">🪙</div>
-            <div className="popup-title">抛硬币</div>
-            <p style={{ marginBottom: 16, color: '#aaa', fontSize: 14 }}>
-              先选择的人锁定硬币面，对手自动获得另一面
-            </p>
-
-            {!game.coinGuessed || !game.coinMyGuess ? (
-              <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-                <button className="btn btn-primary btn-large" onClick={() => send({ type: 'game_coin_guess', guess: 'heads' })}>
+            <div className="popup-title">抛硬币决定选牌权</div>
+            <p style={{ color: '#ccc', fontSize: 13 }}>猜对的一方优先选择卡组</p>
+            {game.coinGuessed ? (
+              <p>你已选择: {COIN_LABEL[game.coinMyGuess ?? 'heads']}，等待对手...</p>
+            ) : (
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12 }}>
+                <button className="btn btn-primary" onClick={() => send({ type: 'game_coin_guess', guess: 'heads' })}>
                   🪙 正面
                 </button>
-                <button className="btn btn-secondary btn-large" onClick={() => send({ type: 'game_coin_guess', guess: 'tails' })}>
+                <button className="btn btn-primary" onClick={() => send({ type: 'game_coin_guess', guess: 'tails' })}>
                   🪙 反面
                 </button>
-              </div>
-            ) : (
-              <div style={{ color: '#888', fontSize: 16 }}>
-                你：{COIN_LABEL[game.coinMyGuess] ?? game.coinMyGuess}<br/>
-                对手：{COIN_LABEL[game.coinMyGuess === 'heads' ? 'tails' : 'heads'] ?? (game.coinMyGuess === 'heads' ? 'tails' : 'heads')}
-              </div>
-            )}
-
-            {game.coinResult && (
-              <div style={{ marginTop: 16, padding: 12, background: '#1a2a1a', borderRadius: 8 }}>
-                结果：{game.coinResult === 'heads' ? '正面' : '反面'}！
-                {game.deckSelector === game.mySlot ? ' → 你先选卡组' : ' → 对手先选卡组'}
               </div>
             )}
           </div>
@@ -100,92 +87,86 @@ const Game: React.FC = () => {
       {/* Deck Select */}
       {displayPhase === 'deck_select' && (
         <div className="popup-overlay">
-          <div className="popup">
+          <div className="popup popup-deck">
             <div className="popup-icon">📚</div>
-            <div className="popup-title">
-              {game.deckSelector === game.mySlot ? '请选择卡组' : '对手正在选择卡组...'}
-            </div>
-            {game.deckSelector === game.mySlot && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {game.availableDeckIds.map((did) => (
-                  <button key={did} className="btn btn-primary" onClick={() => send({ type: 'game_select_deck', deckId: did })}>
-                    {did}
+            <div className="popup-title">选择卡组</div>
+            {isMyTurn ? (
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+                {game.availableDeckIds.map((id) => (
+                  <button
+                    key={id}
+                    className="btn btn-primary"
+                    onClick={() => send({ type: 'game_select_deck', deckId: id })}
+                  >
+                    {id}
                   </button>
                 ))}
               </div>
+            ) : (
+              <p>对手正在选择卡组...</p>
             )}
           </div>
         </div>
       )}
 
       {/* Playing */}
-      {(displayPhase === 'playing' || displayPhase === 'selecting-card' || displayPhase === 'matching') && (
-        <div className="game-area">
-          {/* Opponent hand (hidden) */}
-          <div className="game-ai-hand">
-            <div className="hand">
+      {displayPhase !== 'coin_toss' && displayPhase !== 'deck_select' && displayPhase !== 'match_over' && (
+        <div className="game-main">
+          {/* Public Pool + Opponent Hand */}
+          <div className="game-board">
+            <div className="opponent-area">
               <div className="hand-label">对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span></div>
               <div className="hand-cards">
                 {Array.from({ length: game.opponentHandCount }).map((_, i) => (
-                  <div key={i} className="card card-small card-disabled card-in-hand">
-                    <div className="card-inner"><div className="card-name">?</div></div>
-                  </div>
+                  <CardComponent key={i} card={{ id: 'back', name: '?' }} size="medium" inHand disabled />
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Public Pool */}
-          <div className="board">
-            <div className="board-header">
-              <span className="board-title">公共牌池</span>
-              <span className="board-count">{game.publicPool.length} 张</span>
+            <div className="public-pool">
+              <div className="hand-label">公共牌池 <span className="hand-count">(余{game.drawPileCount}张)</span></div>
+              <div className="hand-cards">
+                {game.publicPool.map((card) => {
+                  const canSelect = game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard;
+                  return (
+                    <CardComponent
+                      key={card.id}
+                      card={card}
+                      size="medium"
+                      disabled={!canSelect}
+                      onClick={() => canSelect && send({ type: 'game_pick_public', cardId: card.id })}
+                    />
+                  );
+                })}
+              </div>
             </div>
-            <div className="board-cards">
-              {game.publicPool.map((card) => {
-                const canClick = game.phase === 'selecting-card' && isMyTurn;
-                const lastPair = game.matchedPairs[game.matchedPairs.length - 1];
-                const matched = !!(game.lastMatchResult?.success && lastPair && (lastPair.cardA === card.name || lastPair.cardB === card.name));
-                return (
-                  <CardComponent
-                    key={card.id}
-                    card={card}
-                    size="small"
-                    inPool
-                    disabled={!canClick}
-                    matched={matched}
-                    onClick={() => canClick && send({ type: 'game_pick_public', cardId: card.id })}
-                  />
-                );
-              })}
+
+            {/* Info bar */}
+            <div className="game-info-bar">
+              <span className="info-deck">📚 {game.myDeckId ?? '对战'}</span>
+              <button className="btn btn-sm btn-danger" onClick={() => send({ type: 'game_concede' })}>
+                认输
+              </button>
             </div>
-          </div>
 
-          {/* Info bar */}
-          <div className="game-info-bar">
-            <span className="info-deck">📚 {game.myDeckId ?? '对战'}</span>
-            <button className="btn btn-sm btn-danger" onClick={() => send({ type: 'game_concede' })}>
-              认输
-            </button>
-          </div>
-
-          {/* My hand */}
-          <div className="hand">
-            <div className="hand-label">我的手牌 <span className="hand-count">({game.myHand.length} 张)</span></div>
-            <div className="hand-cards">
-              {game.myHand.map((card) => {
-                const canSelect = game.phase === 'selecting-card' && isMyTurn;
-                return (
-                  <CardComponent
-                    key={card.id}
-                    card={card}
-                    size="medium"
-                    inHand
-                    disabled={!canSelect}
-                    onClick={() => canSelect && send({ type: 'game_pick_hand', cardId: card.id })}
-                  />
-                );
-              })}
+            {/* My hand */}
+            <div className="hand">
+              <div className="hand-label">我的手牌 <span className="hand-count">({game.myHand.length} 张)</span></div>
+              <div className="hand-cards">
+                {game.myHand.map((card) => {
+                  const canSelect = game.phase === 'selecting-card' && isMyTurn;
+                  return (
+                    <CardComponent
+                      key={card.id}
+                      card={card}
+                      size="medium"
+                      inHand
+                      disabled={!canSelect}
+                      onClick={() => canSelect && send({ type: 'game_pick_hand', cardId: card.id })}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

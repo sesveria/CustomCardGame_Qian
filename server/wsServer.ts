@@ -28,7 +28,6 @@ export function createWSServer(
             userId = newId;
             userManager.login(newId, nickname, ws);
             send({ type: 'auth_ok', userId: newId, nickname });
-            // Tell everyone else about the new player, AND give the new player the full list
             broadcastOnlineUsers(wss, userManager, ws);
             send({ type: 'player_list', players: userManager.getAllOnlinePlayers() });
             return;
@@ -50,7 +49,6 @@ export function createWSServer(
         if (!ok) { send({ type: 'auth_error', reason: '登录失败' }); return; }
         const user = userManager.getUser(userId);
         send({ type: 'auth_ok', userId, nickname: user?.nickname ?? msg.nickname });
-        // Tell everyone else about the new player, AND give the new player the full list
         broadcastOnlineUsers(wss, userManager, ws);
         send({ type: 'player_list', players: userManager.getAllOnlinePlayers() });
         return;
@@ -68,6 +66,16 @@ export function createWSServer(
         if (!targetId) { send({ type: 'game_error', message: '未找到该玩家' }); return; }
         const friend = userManager.addFriend(userId, targetId);
         if (friend) { send({ type: 'friend_added', friend }); } else { send({ type: 'game_error', message: '添加失败' }); }
+        return;
+      }
+
+      // ─── Match vs Bot ───
+      if (msg.type === 'match_vs_bot') {
+        const result = lobbyManager.createBotRoom(userId);
+        if ('error' in result) {
+          send({ type: 'game_error', message: result.error });
+        }
+        // The room now pushes game_state directly; client will navigate on receiving it
         return;
       }
 

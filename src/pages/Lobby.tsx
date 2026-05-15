@@ -62,11 +62,18 @@ const Lobby: React.FC = () => {
       }
     }));
 
-    unsubs.push(on('match_waiting', () => setMatchStatus('waiting')));
+    unsubs.push(on('match_waiting', () => setMatchStatus('waiting'));
     unsubs.push(on('match_timeout', () => setMatchStatus('idle')));
 
     unsubs.push(on('game_start', (msg) => {
       if (msg.type === 'game_start') {
+        setGame(msg.state);
+        navigate('/game');
+      }
+    }));
+
+    unsubs.push(on('game_state', (msg) => {
+      if (msg.type === 'game_state') {
         setGame(msg.state);
         navigate('/game');
       }
@@ -89,14 +96,7 @@ const Lobby: React.FC = () => {
   const handleCancelMatch = () => { send({ type: 'match_cancel' }); setMatchStatus('idle'); };
   
   const handleVsBot = () => {
-    // Find bot by nickname and invite
-    const bot = onlinePlayers.find(p => p.nickname === '🤖 机器人');
-    if (bot) {
-      send({ type: 'invite_send', target: '🤖 机器人' });
-    } else {
-      setError('机器人未在线');
-      setTimeout(() => setError(''), 3000);
-    }
+    send({ type: 'match_vs_bot' });
   };
 
   const handleInvite = () => {
@@ -185,7 +185,7 @@ const Lobby: React.FC = () => {
         <div className="lobby-panel lobby-match-panel">
           <h3>⚔️ 对战</h3>
           <p style={{ color: '#888', fontSize: 13, marginBottom: 12 }}>
-            与机器人对战（自动接邀），或随机匹配在线玩家
+            与机器人对战，或随机匹配在线玩家
           </p>
           
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 12 }}>
