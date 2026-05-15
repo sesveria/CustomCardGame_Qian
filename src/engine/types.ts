@@ -9,11 +9,13 @@ export interface Deck { meta: DeckMeta; cards: Card[]; relations: Relation[]; }
 export type PlayerSlot = 'player1' | 'player2';
 export interface GameStateForPlayer {
   phase: GamePhaseCS; currentPlayer: PlayerSlot | null; myHand: Card[]; opponentHandCount: number; publicPool: Card[]; drawPileCount: number;
-  myScore: number; opponentScore: number; lastMatchResult: MatchResult | null; matchedPairs: MatchedPairPublic[];
+  myScore: number; opponentScore: number;
+  mySettlement: Card[]; opponentSettlement: Card[];
+  lastMatchResult: MatchResult | null; matchedPairs: MatchedPairPublic[];
   roundNumber: number; myRoundWins: number; opponentRoundWins: number; deckSelector: PlayerSlot;
   availableDeckIds: string[]; myDeckId: string | null; opponentDeckId: string | null;
   coinResult?: 'heads' | 'tails'; coinGuessed?: boolean; coinMyGuess?: 'heads' | 'tails'; mySlot: 'player1' | 'player2';
-  selectedHandCard?: Card | null;
+  selectedHandCard?: Card | null; hasMatchingPoolCard?: boolean;
 }
 export type GamePhaseCS = 'coin_toss' | 'deck_select' | 'playing' | 'selecting-card' | 'matching' | 'round_over' | 'match_over';
 export interface MatchResult { success: boolean; relation?: Relation; explanation?: string; score: number; }
@@ -26,6 +28,7 @@ export type ClientMessage =
   | { type: 'invite_send'; target: string } | { type: 'invite_accept'; inviterId: string } | { type: 'invite_decline'; inviterId: string }
   | { type: 'game_coin_guess'; guess: 'heads' | 'tails' } | { type: 'game_select_deck'; deckId: string }
   | { type: 'game_pick_hand'; cardId: string } | { type: 'game_pick_public'; cardId: string }
+  | { type: 'game_discard_hand' }
   | { type: 'game_dismiss_popup' } | { type: 'game_concede' };
 export type ServerMessage =
   | { type: 'auth_ok'; userId: string; nickname: string } | { type: 'auth_error'; reason: string }

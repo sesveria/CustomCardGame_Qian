@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import type { Card, Deck, Relation, GameStateForPlayer, MatchedPairPublic, PlayerSlot } from '../shared/protocol.js';
 import { RELATION_SCORES } from '../shared/protocol.js';
 
-const HAND_SIZE = 6;
+const HAND_SIZE = 5;
 const POOL_SIZE = 8;
 
 interface FullGameState {
@@ -10,6 +10,7 @@ interface FullGameState {
   drawPile: Card[];
   publicPool: Card[];
   hands: Record<PlayerSlot, Card[]>;
+  settlement: Record<PlayerSlot, Card[]>;
   scores: Record<PlayerSlot, number>;
   currentPlayer: PlayerSlot;
   selectedHandCard: Card | null;
@@ -34,11 +35,39 @@ function findRelation(cardA: Card, cardB: Card, relations: Relation[]): Relation
   return null;
 }
 
-function drawFromPile(pile: Card[], target: Card[], sz: number): { remaining: Card[]; filled: Card[] } {
-  const needed = sz - target.length;
-  if (needed <= 0) return { remaining: pile, filled: target };
-  const drawn = pile.slice(0, needed);
-  return { remaining: pile.slice(needed), filled: [...target, ...drawn] };
+function findAnyMatchingRelation(card: Card, pool: Card[], relations: Relation[]): boolean {
+  for (const pc of pool) {
+    if (findRelation(card, pc, relations)) return true;
+  }
+  return false;
+}
+
+/**
+ * Recalculate score for a player's settlement zone.
+ * Scores every relation where BOTH cards live in that player's settlement.
+ * Multi-card chains: if A↔B, B↔C, and A↔C all exist with A,B,C in settlement,
+ * all three are scored.
+ */
+function recalcSettlementScore(
+  settlement: Card[],
+  relations: Relation[],
+  relScores: Record<string, number>,
+): number {
+  let total = 0;
+  for (const r of relations) {
+    const aIn = settlement.some(c => c.id === r.cardA);
+    const bIn = settlement.some(c => c.id === r.cardB);
+    if (aIn && bIn) {
+      total += r.score ?? (RELATION_SCORES[r.type] ?? 3);
+    }
+  }
+  return total;
+}
+
+function drawFromPile(pile: Card[], needed: number): { remaining: Card[]; drawn: Card[] } {
+  if (needed <= 0) return { remaining: pile, drawn: [] };
+  if (pile.length <= needed) return { remaining: [], drawn: [...pile] };
+  return { remaining: pile.slice(needed), drawn: pile.slice(0, needed) };
 }
 
 function opp(p: PlayerSlot): PlayerSlot {
@@ -46,9 +75,6 @@ function opp(p: PlayerSlot): PlayerSlot {
 }
 
 type RoomPhaseType = 'coin_toss' | 'deck_select' | 'playing' | 'round_over' | 'match_over';
-
-// ─── Bot callbacks (only used in vs-bot mode) ───
-export type BotActionHandler = (botUserId: string, action: any) => void;
 
 export class GameRoom {
   id: string;
@@ -76,16 +102,6 @@ export class GameRoom {
   private botUserId: string | null = null;
   private onBotState: ((state: GameStateForPlayer) => void) | null = null;
 
-  // Whose turn is it? player1 / player2
-  whoseTurn(): PlayerSlot | null {
-    const gs = this.gameState;
-    if (!gs) return null;
-    if (this.phase === 'playing' || this.phase === 'coin_toss' || this.phase === 'deck_select' || this.phase === 'round_over') {
-      return gs.currentPlayer;
-    }
-    return null;
-  }
-
   constructor(
     id: string,
     p1: string, p1nick: string, ws1: WebSocket,
@@ -99,7 +115,6 @@ export class GameRoom {
     this.deckIds = deckIds;
   }
 
-  // Mark p2 as bot
   markBot(userId: string, onState: (state: GameStateForPlayer) => void): void {
     this.botUserId = userId;
     this.onBotState = onState;
@@ -152,7 +167,10 @@ export class GameRoom {
     if (!this.deckIds.includes(deckId)) return;
     this.selectedDecks[slot] = deckId;
     const oppSlot = opp(slot);
-    if (!this.selectedDecks[oppSlot]) this.selectedDecks[oppSlot] = this.deckIds.find(d => d !== deckId) ?? deckId;
+    if (!this.selectedDecks[oppSlot]) {
+      // Auto-assign a different deck for opponent
+      this.selectedDecks[oppSlot] = this.deckIds.find(d => d !== deckId) ?? deckId;
+    }
     this.round++;
     this.startRound();
   }
@@ -161,16 +179,24 @@ export class GameRoom {
     const selDeckId = this.selectedDecks[this.deckSelector] ?? this.deckIds[0];
     const activeDeck = this.decks[selDeckId];
     if (!activeDeck) return;
+
     const shuffled = shuffle([...activeDeck.cards]);
     const pool = shuffled.splice(0, POOL_SIZE);
     const hand1 = shuffled.splice(0, HAND_SIZE);
     const hand2 = shuffled.splice(0, HAND_SIZE);
+
     this.gameState = {
-      deck: activeDeck, drawPile: shuffled, publicPool: pool,
+      deck: activeDeck,
+      drawPile: shuffled,
+      publicPool: pool,
       hands: { player1: hand1, player2: hand2 },
+      settlement: { player1: [], player2: [] },
       scores: { player1: 0, player2: 0 },
-      currentPlayer: this.deckSelector, selectedHandCard: null,
-      matchedPairs: [], lastMatchResult: null, phase: 'selecting-card',
+      currentPlayer: this.deckSelector,
+      selectedHandCard: null,
+      matchedPairs: [],
+      lastMatchResult: null,
+      phase: 'selecting-card',
     };
     this.phase = 'playing';
     this.pushBoth();
@@ -183,6 +209,11 @@ export class GameRoom {
     const card = gs.hands[slot].find(c => c.id === cardId);
     if (!card) return;
     gs.selectedHandCard = card;
+
+    // Check if there's any matching card in the pool for this card
+    const hasMatch = findAnyMatchingRelation(card, gs.publicPool, gs.deck.relations);
+
+    // If no match, don't force public pick; player can discard instead
     this.pushBoth();
   }
 
@@ -194,25 +225,97 @@ export class GameRoom {
     if (!publicCard) return;
     const handCard = gs.selectedHandCard;
     const relation = findRelation(handCard, publicCard, gs.deck.relations);
+
     if (relation) {
-      const score = relation.score ?? RELATION_SCORES[relation.type];
-      gs.scores[slot] += score;
+      // Matching success: both cards go to settlement
+      const score = relation.score ?? (RELATION_SCORES[relation.type] ?? 3);
+
+      // Move both cards to settlement
+      gs.settlement[slot].push(handCard);
+      gs.settlement[slot].push(publicCard);
+
+      gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
+      gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
+
+      // Record the pair
       gs.matchedPairs.push({
         cardA: handCard.name, cardB: publicCard.name,
         relationType: relation.type, explanation: relation.explanation, player: slot,
       });
+
+      // Recalculate score for this player's settlement (multi-card chains included)
+      gs.scores[slot] = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
+
+      // Refill public pool from draw pile (1 card)
+      const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
+      gs.drawPile = remaining;
+      gs.publicPool = [...gs.publicPool, ...drawn];
+
+      gs.selectedHandCard = null;
       gs.lastMatchResult = { success: true, relation, explanation: relation.explanation, score };
-      gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
-      gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
+
+      // Check end-of-round: hand empty
+      if (gs.hands[slot].length === 0) {
+        this.endRound();
+        return;
+      }
     } else {
-      gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，卡牌退回手牌' };
+      // No match: just discard the hand card to pool, draw one from pile
+      gs.publicPool.push(handCard);
+      gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
+
+      const { remaining: rem2, drawn: dr } = drawFromPile(gs.drawPile, 1);
+      gs.drawPile = rem2;
+      if (dr.length > 0) {
+        gs.hands[slot] = [...gs.hands[slot], ...dr];
+      }
+
+      gs.selectedHandCard = null;
+      gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，卡牌打入公共牌池' };
+
+      if (gs.hands[slot].length === 0 && gs.drawPile.length === 0) {
+        this.endRound();
+        return;
+      }
     }
-    const handRes = drawFromPile(gs.drawPile, gs.hands[slot], HAND_SIZE);
-    const poolRes = drawFromPile(handRes.remaining, gs.publicPool, POOL_SIZE);
-    gs.drawPile = poolRes.remaining;
-    gs.publicPool = poolRes.filled;
-    gs.hands[slot] = handRes.filled;
+
+    gs.phase = 'matching';
+    this.pushBoth();
+  }
+
+  /** Discard hand card to pool (no public card selected) */
+  discardHandCard(playerId: string): void {
+    const slot = this.slot(playerId);
+    const gs = this.gameState;
+    if (!slot || !gs || gs.phase !== 'selecting-card' || gs.currentPlayer !== slot) return;
+    if (!gs.selectedHandCard) return;
+    const handCard = gs.selectedHandCard;
+
+    // Check: if there IS a matching card in pool, don't allow discard
+    const hasMatch = findAnyMatchingRelation(handCard, gs.publicPool, gs.deck.relations);
+    // Allow discard but with a random pool card as "maybe they chose discard anyway"
+    // Actually per the rules: discard if no matching card OR player chooses to discard
+    // We'll allow discard always (player's choice)
+
+    // Move hand card to pool
+    gs.publicPool.push(handCard);
+    gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
+
+    // Draw one from pile
+    const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
+    gs.drawPile = remaining;
+    if (drawn.length > 0) {
+      gs.hands[slot] = [...gs.hands[slot], ...drawn];
+    }
+
     gs.selectedHandCard = null;
+    gs.lastMatchResult = { success: false, score: 0, explanation: '手牌打入公共牌池，抽取一张新牌' };
+
+    if (gs.hands[slot].length === 0 && gs.drawPile.length === 0) {
+      this.endRound();
+      return;
+    }
+
     gs.phase = 'matching';
     this.pushBoth();
   }
@@ -221,27 +324,41 @@ export class GameRoom {
     const slot = this.slot(playerId);
     const gs = this.gameState;
     if (!slot || !gs || gs.phase !== 'matching' || gs.currentPlayer !== slot) return;
+
     gs.lastMatchResult = null;
-    if (gs.drawPile.length === 0 && gs.publicPool.length < POOL_SIZE) {
-      gs.phase = 'round_over';
-      this.phase = 'round_over';
-      let wId: string | null = null;
-      if (gs.scores.player1 > gs.scores.player2) { this.roundWins[0]++; wId = this.players[0]; }
-      else if (gs.scores.player2 > gs.scores.player1) { this.roundWins[1]++; wId = this.players[1]; }
-      this.pushBoth();
-      if (this.roundWins[0] >= 2 || this.roundWins[1] >= 2 || this.round >= 3) {
-        this.phase = 'match_over';
-        const mw = this.roundWins[0] > this.roundWins[1] ? this.players[0]
-                 : this.roundWins[1] > this.roundWins[0] ? this.players[1] : null;
-        this.onMatchEnd?.(mw);
-        return;
-      }
-      this.onRoundEnd?.(wId!);
-      return;
-    }
+    // Switch turn to the other player
     gs.currentPlayer = opp(slot);
     gs.phase = 'selecting-card';
     this.pushBoth();
+  }
+
+  private endRound(): void {
+    const gs = this.gameState;
+    if (!gs) return;
+
+    gs.phase = 'round_over';
+    this.phase = 'round_over';
+
+    let wId: string | null = null;
+    if (gs.scores.player1 > gs.scores.player2) {
+      this.roundWins[0]++;
+      wId = this.players[0];
+    } else if (gs.scores.player2 > gs.scores.player1) {
+      this.roundWins[1]++;
+      wId = this.players[1];
+    }
+    // Draw: no one gets a round win
+
+    this.pushBoth();
+
+    if (this.roundWins[0] >= 2 || this.roundWins[1] >= 2 || this.round >= 3) {
+      this.phase = 'match_over';
+      const mw = this.roundWins[0] > this.roundWins[1] ? this.players[0]
+               : this.roundWins[1] > this.roundWins[0] ? this.players[1] : null;
+      this.onMatchEnd?.(mw);
+      return;
+    }
+    this.onRoundEnd?.(wId ?? this.players[0]);
   }
 
   concede(playerId: string): void {
@@ -277,7 +394,6 @@ export class GameRoom {
   private send(playerSlot: PlayerSlot, msg: any): void {
     const pid = this.players[playerSlot === 'player1' ? 0 : 1];
     if (pid === this.botUserId) {
-      // Route to bot callback instead of WebSocket
       if (msg.type === 'game_state' || msg.type === 'game_start') {
         this.onBotState?.(msg.state);
       }
@@ -295,10 +411,13 @@ export class GameRoom {
   private buildState(slot: PlayerSlot): GameStateForPlayer {
     const gs = this.gameState;
     const oppSlot = opp(slot);
+
     const base: GameStateForPlayer = {
       phase: this.phase as any,
       currentPlayer: null, myHand: [], opponentHandCount: 0, publicPool: [], drawPileCount: 0,
-      myScore: 0, opponentScore: 0, lastMatchResult: null, matchedPairs: [],
+      myScore: 0, opponentScore: 0,
+      mySettlement: [], opponentSettlement: [],
+      lastMatchResult: null, matchedPairs: [],
       roundNumber: this.round,
       myRoundWins: slot === 'player1' ? this.roundWins[0] : this.roundWins[1],
       opponentRoundWins: slot === 'player1' ? this.roundWins[1] : this.roundWins[0],
@@ -311,6 +430,7 @@ export class GameRoom {
       coinMyGuess: this.coinGuesses[slot],
       mySlot: slot,
     };
+
     if (gs) {
       base.currentPlayer = gs.currentPlayer;
       base.myHand = gs.hands[slot] ?? [];
@@ -319,11 +439,17 @@ export class GameRoom {
       base.drawPileCount = gs.drawPile.length;
       base.myScore = gs.scores[slot] ?? 0;
       base.opponentScore = gs.scores[oppSlot] ?? 0;
+      base.mySettlement = gs.settlement[slot] ?? [];
+      base.opponentSettlement = gs.settlement[oppSlot] ?? [];
       base.lastMatchResult = gs.lastMatchResult ?? null;
       base.matchedPairs = gs.matchedPairs;
       base.selectedHandCard = gs.selectedHandCard ?? null;
+      base.hasMatchingPoolCard = gs.selectedHandCard
+        ? findAnyMatchingRelation(gs.selectedHandCard, gs.publicPool, gs.deck.relations)
+        : undefined;
       base.phase = gs.phase as any;
     }
+
     return base;
   }
 

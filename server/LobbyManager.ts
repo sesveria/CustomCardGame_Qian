@@ -113,6 +113,7 @@ export class LobbyManager {
         case 'game_select_deck': room.selectDeck(botUserId, msg.deckId); break;
         case 'game_pick_hand': room.pickHandCard(botUserId, msg.cardId); break;
         case 'game_pick_public': room.pickPublicCard(botUserId, msg.cardId); break;
+        case 'game_discard_hand': room.discardHandCard(botUserId); break;
         case 'game_dismiss_popup': room.dismissPopup(botUserId); break;
       }
     });

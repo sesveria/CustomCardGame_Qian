@@ -13,7 +13,6 @@ const Game: React.FC = () => {
   const send = useConnection((s) => s.send);
   const on = useConnection((s) => s.on);
 
-  // Register game_state listener so this page receives state pushes from the server
   useEffect(() => {
     const unsub = on('game_state', (msg) => {
       if (msg.type === 'game_state') {
@@ -111,62 +110,101 @@ const Game: React.FC = () => {
 
       {/* Playing */}
       {displayPhase !== 'coin_toss' && displayPhase !== 'deck_select' && displayPhase !== 'match_over' && (
-        <div className="game-main">
-          {/* Public Pool + Opponent Hand */}
-          <div className="game-board">
-            <div className="opponent-area">
-              <div className="hand-label">对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span></div>
-              <div className="hand-cards">
-                {Array.from({ length: game.opponentHandCount }).map((_, i) => (
-                  <CardComponent key={i} card={{ id: 'back', name: '?' }} size="medium" inHand disabled />
+        <div className="game-main" style={{ padding: '8px 16px' }}>
+          {/* Settlement zones — both sides */}
+          <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+            <div className="settlement-zone" style={{ flex: 1, background: '#1a2a3a', borderRadius: 8, padding: 6, minHeight: 60 }}>
+              <div className="hand-label">🧑 你的结算区 <span style={{color:'#4af'}}>得分:{game.myScore}</span></div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {(game.mySettlement ?? []).map(c => (
+                  <CardComponent key={c.id} card={c} size="small" />
                 ))}
               </div>
             </div>
-
-            <div className="public-pool">
-              <div className="hand-label">公共牌池 <span className="hand-count">(余{game.drawPileCount}张)</span></div>
-              <div className="hand-cards">
-                {game.publicPool.map((card) => {
-                  const canSelect = game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard;
-                  return (
-                    <CardComponent
-                      key={card.id}
-                      card={card}
-                      size="medium"
-                      disabled={!canSelect}
-                      onClick={() => canSelect && send({ type: 'game_pick_public', cardId: card.id })}
-                    />
-                  );
-                })}
+            <div className="settlement-zone" style={{ flex: 1, background: '#2a1a1a', borderRadius: 8, padding: 6, minHeight: 60 }}>
+              <div className="hand-label">🤖 对手结算区 <span style={{color:'#f44'}}>得分:{game.opponentScore}</span></div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {(game.opponentSettlement ?? []).map(c => (
+                  <CardComponent key={c.id} card={c} size="small" />
+                ))}
               </div>
             </div>
+          </div>
 
-            {/* Info bar */}
-            <div className="game-info-bar">
-              <span className="info-deck">📚 {game.myDeckId ?? '对战'}</span>
-              <button className="btn btn-sm btn-danger" onClick={() => send({ type: 'game_concede' })}>
-                认输
+          {/* Opponent Hand */}
+          <div className="opponent-area" style={{ marginBottom: 8 }}>
+            <div className="hand-label">对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span></div>
+            <div className="hand-cards">
+              {Array.from({ length: game.opponentHandCount }).map((_, i) => (
+                <CardComponent key={i} card={{ id: 'back', name: '?' }} size="medium" inHand disabled />
+              ))}
+            </div>
+          </div>
+
+          {/* Public Pool */}
+          <div className="public-pool" style={{ marginBottom: 8 }}>
+            <div className="hand-label">公共牌池 <span className="hand-count">(余{game.drawPileCount}张)</span></div>
+            <div className="hand-cards">
+              {game.publicPool.map((card) => {
+                const canSelect = game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard;
+                const isSelected = game.selectedHandCard?.id === card.id;
+                return (
+                  <CardComponent
+                    key={card.id}
+                    card={card}
+                    size="medium"
+                    selected={isSelected}
+                    disabled={!canSelect}
+                    onClick={() => canSelect && send({ type: 'game_pick_public', cardId: card.id })}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Turn indicator / action bar */}
+          <div className="game-info-bar" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span className="info-deck">📚 {game.myDeckId ?? '对战'}</span>
+            <span style={{ color: isMyTurn ? '#4af' : '#888', fontSize: 13 }}>
+              {isMyTurn ? '⚡ 你的回合' : '⏳ 对手回合'}
+            </span>
+            {game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard && (
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => send({ type: 'game_discard_hand' })}
+                style={{ marginLeft: 'auto' }}
+              >
+                🗑 弃入公池换牌
               </button>
-            </div>
+            )}
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={() => send({ type: 'game_concede' })}
+              style={{ marginLeft: 'auto' }}
+            >
+              认输
+            </button>
+          </div>
 
-            {/* My hand */}
-            <div className="hand">
-              <div className="hand-label">我的手牌 <span className="hand-count">({game.myHand.length} 张)</span></div>
-              <div className="hand-cards">
-                {game.myHand.map((card) => {
-                  const canSelect = game.phase === 'selecting-card' && isMyTurn;
-                  return (
-                    <CardComponent
-                      key={card.id}
-                      card={card}
-                      size="medium"
-                      inHand
-                      disabled={!canSelect}
-                      onClick={() => canSelect && send({ type: 'game_pick_hand', cardId: card.id })}
-                    />
-                  );
-                })}
-              </div>
+          {/* My hand */}
+          <div className="hand">
+            <div className="hand-label">我的手牌 <span className="hand-count">({game.myHand.length} 张)</span></div>
+            <div className="hand-cards">
+              {game.myHand.map((card) => {
+                const canSelect = game.phase === 'selecting-card' && isMyTurn;
+                const isSelected = game.selectedHandCard?.id === card.id;
+                return (
+                  <CardComponent
+                    key={card.id}
+                    card={card}
+                    size="medium"
+                    inHand
+                    selected={isSelected}
+                    disabled={!canSelect}
+                    onClick={() => canSelect && send({ type: 'game_pick_hand', cardId: card.id })}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
@@ -188,7 +226,7 @@ const Game: React.FC = () => {
               </>
             )}
             {!game.lastMatchResult.success && (
-              <div className="popup-fail-msg">手牌退回，回合结束</div>
+              <div className="popup-fail-msg">{game.lastMatchResult.explanation || '手牌退回，回合结束'}</div>
             )}
             <button className="popup-btn" onClick={() => send({ type: 'game_dismiss_popup' })}>
               确定

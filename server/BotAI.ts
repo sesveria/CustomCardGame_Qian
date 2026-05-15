@@ -3,7 +3,6 @@ import type { GameStateForPlayer, Card, PlayerSlot, ClientMessage } from '../sha
 /**
  * Pure AI logic — no WebSocket, no fake session.
  * Driven by GameRoom which calls handleState(pushState) on each server push.
- * AI actions are returned via callback and sent directly to GameRoom methods.
  */
 export class BotAI {
   private game: GameStateForPlayer | null = null;
@@ -44,11 +43,28 @@ export class BotAI {
 
       case 'selecting-card': {
         const isMe = g.currentPlayer === g.mySlot;
-        if (isMe && g.myHand.length > 0 && g.publicPool.length > 0) {
+        if (isMe && g.myHand.length > 0) {
+          // Choose a hand card
           const hc = g.myHand[Math.floor(Math.random() * g.myHand.length)];
-          const pc = g.publicPool[Math.floor(Math.random() * g.publicPool.length)];
           s({ type: 'game_pick_hand', cardId: hc.id });
-          setTimeout(() => s({ type: 'game_pick_public', cardId: pc.id }), 400);
+
+          // Small delay then try to pick matching public card; if none, discard
+          setTimeout(() => {
+            const g2 = this.game;
+            if (!g2 || g2.currentPlayer !== g2.mySlot) return;
+
+            // See if updated state shows hasMatchingPoolCard
+            // We don't have access here, so just try a public card if pool has cards
+            if (g2.publicPool.length > 0) {
+              // 70% chance pick a public card (which may match), 30% discard
+              if (Math.random() < 0.7) {
+                const pc = g2.publicPool[Math.floor(Math.random() * g2.publicPool.length)];
+                s({ type: 'game_pick_public', cardId: pc.id });
+              } else {
+                s({ type: 'game_discard_hand' });
+              }
+            }
+          }, 500);
         }
         break;
       }

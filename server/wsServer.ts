@@ -75,7 +75,6 @@ export function createWSServer(
         if ('error' in result) {
           send({ type: 'game_error', message: result.error });
         }
-        // The room now pushes game_state directly; client will navigate on receiving it
         return;
       }
 
@@ -115,6 +114,7 @@ export function createWSServer(
       if (msg.type === 'game_select_deck') { room.selectDeck(userId, msg.deckId); return; }
       if (msg.type === 'game_pick_hand') { room.pickHandCard(userId, msg.cardId); return; }
       if (msg.type === 'game_pick_public') { room.pickPublicCard(userId, msg.cardId); return; }
+      if (msg.type === 'game_discard_hand') { room.discardHandCard(userId); return; }
       if (msg.type === 'game_dismiss_popup') { room.dismissPopup(userId); return; }
       if (msg.type === 'game_concede') { room.concede(userId); return; }
     });
