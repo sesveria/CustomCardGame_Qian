@@ -97,7 +97,6 @@ export class LobbyManager {
     const botUserId = 'bot_' + uuid().substring(0, 6);
     const roomId = 'room_' + uuid().substring(0, 6);
 
-    // Create the room with a dummy bot ws placeholder
     const botWs = { readyState: WebSocket.OPEN, send: () => {} } as any;
     const room = new GameRoom(
       roomId, playerId, user.nickname, ws,
@@ -105,7 +104,6 @@ export class LobbyManager {
       this.deckIds,
     );
 
-    // Create and wire BotAI
     const botAi = new BotAI();
     botAi.bind((msg: ClientMessage) => {
       switch (msg.type) {
@@ -123,8 +121,8 @@ export class LobbyManager {
     for (const d of this.userDecks) room.setDeck(d.meta.name, d);
 
     room.setCallbacks(
-      (_winnerId) => room.prepareNextRound(),
-      (_winnerId) => { room.finishMatch(); this.activeRooms.delete(roomId); },
+      (_unused) => {},
+      (_unused) => { room.finishMatch(); this.activeRooms.delete(roomId); },
     );
 
     this.activeRooms.set(roomId, room);
@@ -145,8 +143,8 @@ export class LobbyManager {
     for (const d of this.userDecks) room.setDeck(d.meta.name, d);
 
     room.setCallbacks(
-      (_winnerId) => room.prepareNextRound(),
-      (_winnerId) => { room.finishMatch(); this.activeRooms.delete(roomId); },
+      (_unused) => {},
+      (_unused) => { room.finishMatch(); this.activeRooms.delete(roomId); },
     );
 
     this.activeRooms.set(roomId, room);

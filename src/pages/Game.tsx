@@ -40,24 +40,18 @@ const Game: React.FC = () => {
 
   return (
     <div className="page page-game">
-      {/* Score & Round Header */}
+      {/* Score Header */}
       <div className="scoreboard">
         <div className="sb-player">
           <span className="sb-icon">🧑</span>
           <span className="sb-name">你</span>
-          <span className="sb-score">{game.myScore}</span>
-          {game.roundNumber > 0 && (
-            <span className="sb-round"> (第{game.roundNumber}局 {game.myRoundWins}胜)</span>
-          )}
+          <span className="sb-score">{game.myScore} 分</span>
         </div>
         <div className="sb-vs">VS</div>
         <div className="sb-player">
           <span className="sb-icon">🤖</span>
           <span className="sb-name">对手</span>
-          <span className="sb-score">{game.opponentScore}</span>
-          {game.roundNumber > 0 && (
-            <span className="sb-round"> ({game.opponentRoundWins}胜 第{game.roundNumber}局)</span>
-          )}
+          <span className="sb-score">{game.opponentScore} 分</span>
         </div>
       </div>
 
@@ -112,7 +106,7 @@ const Game: React.FC = () => {
       {/* Playing */}
       {displayPhase !== 'coin_toss' && displayPhase !== 'deck_select' && displayPhase !== 'match_over' && (
         <div className="game-main" style={{ padding: '8px 16px' }}>
-          {/* Settlement zones — both sides */}
+          {/* Settlement zones */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
             <div className="settlement-zone" style={{ flex: 1, background: '#1a2a3a', borderRadius: 8, padding: 6, minHeight: 60 }}>
               <div className="hand-label">🧑 你的结算区 <span style={{color:'#4af'}}>得分:{game.myScore}</span></div>
@@ -149,7 +143,7 @@ const Game: React.FC = () => {
             </div>
           </div>
 
-          {/* Public Pool — clickable during discard-pick or normal selecting */}
+          {/* Public Pool */}
           <div className="public-pool" style={{ marginBottom: 8 }}>
             <div className="hand-label">公共牌池 <span className="hand-count">(余{game.drawPileCount}张)</span></div>
             <div className="hand-cards">
@@ -196,7 +190,7 @@ const Game: React.FC = () => {
             </button>
           </div>
 
-          {/* My hand — disabled during discard mode */}
+          {/* My hand */}
           <div className="hand">
             <div className="hand-label">我的手牌 <span className="hand-count">({game.myHand.length} 张)</span></div>
             <div className="hand-cards">
@@ -245,34 +239,17 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {/* Round Over */}
-      {displayPhase === 'round_over' && (
+      {/* Game Over */}
+      {(displayPhase === 'round_over' || displayPhase === 'match_over') && (
         <div className="popup-overlay">
-          <div className="popup popup-success">
-            <div className="popup-icon">🏁</div>
+          <div className={`popup popup-gameover ${game.myScore > game.opponentScore ? 'popup-success' : game.myScore < game.opponentScore ? 'popup-fail' : ''}`}>
+            <div className="popup-icon">{game.myScore > game.opponentScore ? '🏆' : game.myScore < game.opponentScore ? '😞' : '🤝'}</div>
             <div className="popup-title">
-              {game.myScore > game.opponentScore ? '你赢了本局！' : game.myScore < game.opponentScore ? '对手赢了本局' : '本局平局'}
+              {game.myScore > game.opponentScore ? '恭喜你赢了！' : game.myScore < game.opponentScore ? '对手获胜' : '平局'}
             </div>
             <div className="gameover-scores">
-              <div>你: {game.myScore} 分</div>
-              <div>对手: {game.opponentScore} 分</div>
-            </div>
-            <p style={{ color: '#888', fontSize: 13 }}>等待下一局...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Match Over */}
-      {displayPhase === 'match_over' && (
-        <div className="popup-overlay">
-          <div className={`popup popup-gameover ${game.myRoundWins > game.opponentRoundWins ? 'popup-success' : 'popup-fail'}`}>
-            <div className="popup-icon">{game.myRoundWins > game.opponentRoundWins ? '🏆' : '😞'}</div>
-            <div className="popup-title">
-              {game.myRoundWins > game.opponentRoundWins ? '恭喜你赢了！' : '对手获胜'}
-            </div>
-            <div className="gameover-scores">
-              <div>你: {game.myRoundWins} 胜</div>
-              <div>对手: {game.opponentRoundWins} 胜</div>
+              <div>你: {game.myScore} 分 (结算区 {game.mySettlement?.length ?? 0} 张)</div>
+              <div>对手: {game.opponentScore} 分 (结算区 {game.opponentSettlement?.length ?? 0} 张)</div>
             </div>
             <div className="gameover-pairs">
               <h3>配对记录</h3>
