@@ -320,6 +320,7 @@ export class GameRoom {
       base.opponentScore = gs.scores[oppSlot] ?? 0;
       base.lastMatchResult = gs.lastMatchResult ?? null;
       base.matchedPairs = gs.matchedPairs;
+      base.selectedHandCard = gs.selectedHandCard ?? null;
       base.phase = gs.phase as any;
     }
     return base;

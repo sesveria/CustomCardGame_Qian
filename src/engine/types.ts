@@ -13,6 +13,7 @@ export interface GameStateForPlayer {
   roundNumber: number; myRoundWins: number; opponentRoundWins: number; deckSelector: PlayerSlot;
   availableDeckIds: string[]; myDeckId: string | null; opponentDeckId: string | null;
   coinResult?: 'heads' | 'tails'; coinGuessed?: boolean; coinMyGuess?: 'heads' | 'tails'; mySlot: 'player1' | 'player2';
+  selectedHandCard?: Card | null;
 }
 export type GamePhaseCS = 'coin_toss' | 'deck_select' | 'playing' | 'selecting-card' | 'matching' | 'round_over' | 'match_over';
 export interface MatchResult { success: boolean; relation?: Relation; explanation?: string; score: number; }
