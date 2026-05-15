@@ -8,6 +8,8 @@ const Lobby: React.FC = () => {
   const navigate = useNavigate();
   const send = useConnection((s) => s.send);
   const on = useConnection((s) => s.on);
+  const ws = useConnection((s) => s.ws);
+  const connected = useConnection((s) => s.connected);
   const game = useGameStore((s) => s.game);
   const setGame = useGameStore((s) => s.setGame);
 
@@ -19,6 +21,13 @@ const Lobby: React.FC = () => {
   const [inviteTarget, setInviteTarget] = useState('');
   const [pendingInvite, setPendingInvite] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState('');
+
+  // Redirect to login if WebSocket is not connected
+  useEffect(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      navigate('/', { replace: true });
+    }
+  }, [ws, connected, navigate]);
 
   useEffect(() => {
     const unsubs: (() => void)[] = [];
