@@ -36,6 +36,7 @@ const Game: React.FC = () => {
   const displayPhase = game.phase;
   const isMyTurn = displayPhase === 'deck_select' ? (game.deckSelector === game.mySlot) : (game.currentPlayer === game.mySlot);
   const COIN_LABEL: Record<string, string> = { 'heads': '🪙 正面', 'tails': '🪙 反面' };
+  const isDiscardingMode = !!game.isDiscarding;
 
   return (
     <div className="page page-game">
@@ -131,6 +132,13 @@ const Game: React.FC = () => {
             </div>
           </div>
 
+          {/* Discard-pick indicator */}
+          {isDiscardingMode && (
+            <div style={{ background: '#4a3020', borderRadius: 8, padding: '8px 16px', marginBottom: 8, textAlign: 'center' }}>
+              <span style={{ color: '#fa0', fontWeight: 'bold' }}>🃏 换牌阶段：从公共牌池中选择一张牌换入手牌</span>
+            </div>
+          )}
+
           {/* Opponent Hand */}
           <div className="opponent-area" style={{ marginBottom: 8 }}>
             <div className="hand-label">对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span></div>
@@ -141,12 +149,14 @@ const Game: React.FC = () => {
             </div>
           </div>
 
-          {/* Public Pool */}
+          {/* Public Pool — clickable during discard-pick or normal selecting */}
           <div className="public-pool" style={{ marginBottom: 8 }}>
             <div className="hand-label">公共牌池 <span className="hand-count">(余{game.drawPileCount}张)</span></div>
             <div className="hand-cards">
               {game.publicPool.map((card) => {
-                const canSelect = game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard;
+                const canSelectInDiscard = isDiscardingMode && isMyTurn;
+                const canSelectNormal = game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard;
+                const canSelect = canSelectInDiscard || canSelectNormal;
                 const isSelected = game.selectedHandCard?.id === card.id;
                 return (
                   <CardComponent
@@ -166,9 +176,9 @@ const Game: React.FC = () => {
           <div className="game-info-bar" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className="info-deck">📚 {game.myDeckId ?? '对战'}</span>
             <span style={{ color: isMyTurn ? '#4af' : '#888', fontSize: 13 }}>
-              {isMyTurn ? '⚡ 你的回合' : '⏳ 对手回合'}
+              {isDiscardingMode ? (isMyTurn ? '🃏 选择一张公池牌' : '⏳ 对手换牌中') : (isMyTurn ? '⚡ 你的回合' : '⏳ 对手回合')}
             </span>
-            {game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard && (
+            {!isDiscardingMode && game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard && (
               <button
                 className="btn btn-sm btn-secondary"
                 onClick={() => send({ type: 'game_discard_hand' })}
@@ -180,18 +190,18 @@ const Game: React.FC = () => {
             <button
               className="btn btn-sm btn-danger"
               onClick={() => send({ type: 'game_concede' })}
-              style={{ marginLeft: 'auto' }}
+              style={{ marginLeft: isDiscardingMode ? 'auto' : 0 }}
             >
               认输
             </button>
           </div>
 
-          {/* My hand */}
+          {/* My hand — disabled during discard mode */}
           <div className="hand">
             <div className="hand-label">我的手牌 <span className="hand-count">({game.myHand.length} 张)</span></div>
             <div className="hand-cards">
               {game.myHand.map((card) => {
-                const canSelect = game.phase === 'selecting-card' && isMyTurn;
+                const canSelect = game.phase === 'selecting-card' && isMyTurn && !isDiscardingMode;
                 const isSelected = game.selectedHandCard?.id === card.id;
                 return (
                   <CardComponent
@@ -216,7 +226,7 @@ const Game: React.FC = () => {
           <div className={`popup ${game.lastMatchResult.success ? 'popup-success' : 'popup-fail'}`}>
             <div className="popup-icon">{game.lastMatchResult.success ? '✨' : '💨'}</div>
             <div className="popup-title">
-              {game.lastMatchResult.success ? '配对成功！' : '没有关联'}
+              {game.lastMatchResult.success ? '配对成功！' : '未匹配'}
             </div>
             {game.lastMatchResult.success && game.lastMatchResult.relation && (
               <>

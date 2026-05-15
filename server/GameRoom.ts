@@ -17,6 +17,8 @@ interface FullGameState {
   matchedPairs: MatchedPairPublic[];
   lastMatchResult: any | null;
   phase: 'selecting-card' | 'matching' | 'round_over';
+  isDiscarding: boolean;
+  discardedCardId: string | null;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -45,8 +47,6 @@ function findAnyMatchingRelation(card: Card, pool: Card[], relations: Relation[]
 /**
  * Recalculate score for a player's settlement zone.
  * Scores every relation where BOTH cards live in that player's settlement.
- * Multi-card chains: if A↔B, B↔C, and A↔C all exist with A,B,C in settlement,
- * all three are scored.
  */
 function recalcSettlementScore(
   settlement: Card[],
@@ -98,7 +98,6 @@ export class GameRoom {
   private onRoundEnd: ((winnerId: string) => void) | null = null;
   private onMatchEnd: ((winnerId: string | null) => void) | null = null;
 
-  // Bot support
   private botUserId: string | null = null;
   private onBotState: ((state: GameStateForPlayer) => void) | null = null;
 
@@ -168,7 +167,6 @@ export class GameRoom {
     this.selectedDecks[slot] = deckId;
     const oppSlot = opp(slot);
     if (!this.selectedDecks[oppSlot]) {
-      // Auto-assign a different deck for opponent
       this.selectedDecks[oppSlot] = this.deckIds.find(d => d !== deckId) ?? deckId;
     }
     this.round++;
@@ -197,6 +195,8 @@ export class GameRoom {
       matchedPairs: [],
       lastMatchResult: null,
       phase: 'selecting-card',
+      isDiscarding: false,
+      discardedCardId: null,
     };
     this.phase = 'playing';
     this.pushBoth();
@@ -206,21 +206,41 @@ export class GameRoom {
     const slot = this.slot(playerId);
     const gs = this.gameState;
     if (!slot || !gs || gs.phase !== 'selecting-card' || gs.currentPlayer !== slot) return;
+    if (gs.isDiscarding) return; // can't pick hand during discard phase
     const card = gs.hands[slot].find(c => c.id === cardId);
     if (!card) return;
     gs.selectedHandCard = card;
-
-    // Check if there's any matching card in the pool for this card
-    const hasMatch = findAnyMatchingRelation(card, gs.publicPool, gs.deck.relations);
-
-    // If no match, don't force public pick; player can discard instead
     this.pushBoth();
   }
 
   pickPublicCard(playerId: string, cardId: string): void {
     const slot = this.slot(playerId);
     const gs = this.gameState;
-    if (!slot || !gs || gs.phase !== 'selecting-card' || !gs.selectedHandCard || gs.currentPlayer !== slot) return;
+    if (!slot || !gs || gs.phase !== 'selecting-card' || gs.currentPlayer !== slot) return;
+
+    // ── Post-discard pool pick ──
+    if (gs.isDiscarding) {
+      const poolCard = gs.publicPool.find(c => c.id === cardId);
+      if (!poolCard) return;
+      // Cannot pick the card you just discarded
+      if (cardId === gs.discardedCardId) return;
+
+      // Move pool card to hand
+      gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
+      gs.hands[slot].push(poolCard);
+
+      gs.isDiscarding = false;
+      gs.discardedCardId = null;
+      gs.selectedHandCard = null;
+      gs.lastMatchResult = { success: false, score: 0, explanation: '从公共牌池换得一张牌' };
+
+      gs.phase = 'matching';
+      this.pushBoth();
+      return;
+    }
+
+    // ── Normal match attempt ──
+    if (!gs.selectedHandCard || gs.currentPlayer !== slot) return;
     const publicCard = gs.publicPool.find(c => c.id === cardId);
     if (!publicCard) return;
     const handCard = gs.selectedHandCard;
@@ -230,20 +250,17 @@ export class GameRoom {
       // Matching success: both cards go to settlement
       const score = relation.score ?? (RELATION_SCORES[relation.type] ?? 3);
 
-      // Move both cards to settlement
       gs.settlement[slot].push(handCard);
       gs.settlement[slot].push(publicCard);
 
       gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
       gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
 
-      // Record the pair
       gs.matchedPairs.push({
         cardA: handCard.name, cardB: publicCard.name,
         relationType: relation.type, explanation: relation.explanation, player: slot,
       });
 
-      // Recalculate score for this player's settlement (multi-card chains included)
       gs.scores[slot] = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
 
       // Refill public pool from draw pile (1 card)
@@ -254,26 +271,22 @@ export class GameRoom {
       gs.selectedHandCard = null;
       gs.lastMatchResult = { success: true, relation, explanation: relation.explanation, score };
 
-      // Check end-of-round: hand empty
       if (gs.hands[slot].length === 0) {
         this.endRound();
         return;
       }
     } else {
-      // No match: just discard the hand card to pool, draw one from pile
-      gs.publicPool.push(handCard);
+      // No match: hand card goes to settlement (NOT to pool), recalc score
+      gs.settlement[slot].push(handCard);
       gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
 
-      const { remaining: rem2, drawn: dr } = drawFromPile(gs.drawPile, 1);
-      gs.drawPile = rem2;
-      if (dr.length > 0) {
-        gs.hands[slot] = [...gs.hands[slot], ...dr];
-      }
+      // Recalculate settlement score
+      gs.scores[slot] = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
 
       gs.selectedHandCard = null;
-      gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，卡牌打入公共牌池' };
+      gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，手牌进入结算区' };
 
-      if (gs.hands[slot].length === 0 && gs.drawPile.length === 0) {
+      if (gs.hands[slot].length === 0) {
         this.endRound();
         return;
       }
@@ -283,40 +296,25 @@ export class GameRoom {
     this.pushBoth();
   }
 
-  /** Discard hand card to pool (no public card selected) */
+  /** Discard hand card to pool, then player picks from pool (two-step) */
   discardHandCard(playerId: string): void {
     const slot = this.slot(playerId);
     const gs = this.gameState;
     if (!slot || !gs || gs.phase !== 'selecting-card' || gs.currentPlayer !== slot) return;
     if (!gs.selectedHandCard) return;
-    const handCard = gs.selectedHandCard;
+    if (gs.publicPool.length === 0) return; // nothing to swap with
 
-    // Check: if there IS a matching card in pool, don't allow discard
-    const hasMatch = findAnyMatchingRelation(handCard, gs.publicPool, gs.deck.relations);
-    // Allow discard but with a random pool card as "maybe they chose discard anyway"
-    // Actually per the rules: discard if no matching card OR player chooses to discard
-    // We'll allow discard always (player's choice)
+    const handCard = gs.selectedHandCard;
 
     // Move hand card to pool
     gs.publicPool.push(handCard);
     gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
 
-    // Draw one from pile
-    const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
-    gs.drawPile = remaining;
-    if (drawn.length > 0) {
-      gs.hands[slot] = [...gs.hands[slot], ...drawn];
-    }
-
+    // Enter discard-pick mode
     gs.selectedHandCard = null;
-    gs.lastMatchResult = { success: false, score: 0, explanation: '手牌打入公共牌池，抽取一张新牌' };
+    gs.isDiscarding = true;
+    gs.discardedCardId = handCard.id;
 
-    if (gs.hands[slot].length === 0 && gs.drawPile.length === 0) {
-      this.endRound();
-      return;
-    }
-
-    gs.phase = 'matching';
     this.pushBoth();
   }
 
@@ -326,7 +324,6 @@ export class GameRoom {
     if (!slot || !gs || gs.phase !== 'matching' || gs.currentPlayer !== slot) return;
 
     gs.lastMatchResult = null;
-    // Switch turn to the other player
     gs.currentPlayer = opp(slot);
     gs.phase = 'selecting-card';
     this.pushBoth();
@@ -347,7 +344,6 @@ export class GameRoom {
       this.roundWins[1]++;
       wId = this.players[1];
     }
-    // Draw: no one gets a round win
 
     this.pushBoth();
 
@@ -429,6 +425,7 @@ export class GameRoom {
       coinGuessed: !!this.coinGuesses[slot],
       coinMyGuess: this.coinGuesses[slot],
       mySlot: slot,
+      isDiscarding: false,
     };
 
     if (gs) {
@@ -443,8 +440,9 @@ export class GameRoom {
       base.opponentSettlement = gs.settlement[oppSlot] ?? [];
       base.lastMatchResult = gs.lastMatchResult ?? null;
       base.matchedPairs = gs.matchedPairs;
+      base.isDiscarding = gs.isDiscarding;
       base.selectedHandCard = gs.selectedHandCard ?? null;
-      base.hasMatchingPoolCard = gs.selectedHandCard
+      base.hasMatchingPoolCard = gs.selectedHandCard && !gs.isDiscarding
         ? findAnyMatchingRelation(gs.selectedHandCard, gs.publicPool, gs.deck.relations)
         : undefined;
       base.phase = gs.phase as any;
