@@ -100,63 +100,86 @@ const Game: React.FC = () => {
       {displayPhase === 'coin_toss' && (
         <div className="popup-overlay">
           {!game.coinRevealed ? (
-            /* ── Guess Phase ── */
             <div className="popup popup-coin">
               <div className="popup-title">抛硬币决定选牌权</div>
               <div className="popup-subtitle">猜对的一方优先选择卡组</div>
 
-              <div className="coin-circle" aria-label="硬币待猜">
-                <span className="coin-char">?</span>
+              <div style={{
+                width: 100, height: 100, margin: '20px auto',
+                borderRadius: '50%', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: '#d4a017', border: '4px solid #a07808',
+                boxShadow: '0 0 24px rgba(255,200,0,.45)',
+              }}>
+                <span style={{ fontSize: 42, fontWeight: 900, color: '#6b4c00', lineHeight: 1 }}>?</span>
               </div>
 
               {game.coinGuessed ? (
-                <p className="coin-guessed-msg">
+                <p style={{ fontSize: 14, color: '#a0a0b0', marginTop: 16 }}>
                   你选了 <strong>{COIN_LABEL[game.coinMyGuess ?? 'heads']}</strong>，等待对手...
                 </p>
               ) : (
-                <div className="coin-guess-row">
+                <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 18 }}>
                   <button
                     className="coin-guess-btn heads"
                     onClick={() => send({ type: 'game_coin_guess', guess: 'heads' })}
                   >
-                    <span className="guess-icon">🟡</span>
-                    <span className="guess-label">正面</span>
+                    <span style={{ display:'inline-block',width:32,height:32,borderRadius:'50%',
+                      background:'#f5c842',border:'3px solid #b8860b',
+                      boxShadow:'0 0 12px rgba(245,200,66,.5)' }}></span>
+                    <span style={{ fontSize: 13, opacity: .8 }}>正面</span>
                   </button>
                   <button
                     className="coin-guess-btn tails"
                     onClick={() => send({ type: 'game_coin_guess', guess: 'tails' })}
                   >
-                    <span className="guess-icon">⚪</span>
-                    <span className="guess-label">反面</span>
+                    <span style={{ display:'inline-block',width:32,height:32,borderRadius:'50%',
+                      background:'#c0c0c0',border:'3px solid #707070',
+                      boxShadow:'0 0 12px rgba(180,180,180,.5)' }}></span>
+                    <span style={{ fontSize: 13, opacity: .8 }}>反面</span>
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            /* ── Reveal Phase ── */
             <div className="popup popup-coin">
-              <div className="coin-reveal">
+              <div style={{ textAlign: 'center' }}>
                 <div className="popup-title">硬币结果</div>
 
-                <div className={`coin-circle ${game.coinResult === 'heads' ? 'coin-heads' : 'coin-tails'}`}>
-                  <span className="coin-char">{game.coinResult === 'heads' ? '正' : '反'}</span>
+                <div style={{
+                  width: 100, height: 100, margin: '20px auto',
+                  borderRadius: '50%', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  background: game.coinResult === 'heads' ? '#d4a017' : '#909090',
+                  border: game.coinResult === 'heads' ? '4px solid #a07808' : '4px solid #555',
+                  boxShadow: game.coinResult === 'heads' ? '0 0 24px rgba(255,200,0,.45)' : '0 0 24px rgba(180,180,180,.45)',
+                }}>
+                  <span style={{
+                    fontSize: 42, fontWeight: 900,
+                    color: game.coinResult === 'heads' ? '#6b4c00' : '#333',
+                    lineHeight: 1,
+                  }}>{game.coinResult === 'heads' ? '正' : '反'}</span>
                 </div>
 
-                <div className="coin-result-text">
-                  {game.coinResult === 'heads' ? '🟡 正面' : '⚪ 反面'}
+                <div style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', margin: '12px 0 8px' }}>
+                  {game.coinResult === 'heads' ? '正面' : '反面'}
                 </div>
 
-                <span className={`coin-result-label ${game.coinGuessed ? 'won' : 'lost'}`}>
-                  {game.coinGuessed ? '🎉 你猜对了！有优先选牌权' : '😞 你没猜对，对方先选卡组'}
+                <span style={{
+                  fontSize: 16, fontWeight: 700, margin: '12px 0',
+                  padding: '6px 20px', borderRadius: 20, display: 'inline-block',
+                  background: game.coinGuessed ? 'rgba(39,174,96,.15)' : 'rgba(192,57,43,.15)',
+                  color: game.coinGuessed ? 'var(--success)' : 'var(--fail)',
+                }}>
+                  {game.coinGuessed ? '你猜对了！有优先选牌权' : '你没猜对，对方先选卡组'}
                 </span>
-                <p className="coin-wait-text">即将进入选牌阶段...</p>
+                <p style={{ fontSize: 13, color: '#a0a0b0', marginTop: 10 }}>即将进入选牌阶段...</p>
               </div>
             </div>
           )}
         </div>
       )}
-
-      {/* ─── Deck Select ─── */}
+{/* ─── Deck Select ─── */}
       {displayPhase === 'deck_select' && (
         <div className="popup-overlay">
           <div className="popup">
