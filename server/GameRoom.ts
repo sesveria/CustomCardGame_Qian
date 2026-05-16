@@ -22,6 +22,8 @@ interface FullGameState {
   phase: 'selecting-card' | 'matching' | 'round_over';
   isDiscarding: boolean;
   discardedCardId: string | null;
+  /** Set when a player runs out of hand cards; game ends only after the other player completes their turn */
+  pendingGameEnd: boolean;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -49,7 +51,8 @@ function findAnyMatchingRelation(card: Card, pool: Card[], relations: Relation[]
 
 /**
  * Recalculate settlement score for a player's settlement zone.
- * Scores every relation where BOTH cards live in that player's settlement.
+ * Scores every relation where all involved cards live in that player's settlement.
+ * Supports 2-card (cardA+cardB) and 3-card (cardA+cardB+cardC) relations.
  */
 function recalcSettlementScore(
   settlement: Card[],
@@ -57,12 +60,11 @@ function recalcSettlementScore(
   _relScores: Record<string, number>,
 ): number {
   let total = 0;
+  const ids = new Set(settlement.map(c => c.id));
   for (const r of relations) {
-    const aIn = settlement.some(c => c.id === r.cardA);
-    const bIn = settlement.some(c => c.id === r.cardB);
-    if (aIn && bIn) {
-      total += r.score ?? (RELATION_SCORES[r.type] ?? 3);
-    }
+    if (!ids.has(r.cardA) || !ids.has(r.cardB)) continue;
+    if (r.cardC && !ids.has(r.cardC)) continue;
+    total += r.score ?? (RELATION_SCORES[r.type] ?? 3);
   }
   return total;
 }
@@ -197,11 +199,15 @@ export class GameRoom {
       phase: 'selecting-card',
       isDiscarding: false,
       discardedCardId: null,
+      pendingGameEnd: false,
     };
     this.phase = 'playing';
 
     if ((this.gameState.hands[this.gameState.currentPlayer] ?? []).length === 0) {
-      this.endGame();
+      this.gameState.pendingGameEnd = true;
+      // Let the other player still complete their turn
+      this.gameState.currentPlayer = opp(this.gameState.currentPlayer);
+      this.pushBoth();
       return;
     }
 
@@ -259,7 +265,6 @@ export class GameRoom {
 
     if (relation) {
       const pairScore = relation.score ?? (RELATION_SCORES[relation.type] ?? 3);
-      // Accumulate pair score
       gs.pairScores[slot] += pairScore;
 
       gs.matchedPairs.push({
@@ -271,9 +276,7 @@ export class GameRoom {
       gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，双方卡牌进入结算区' };
     }
 
-    // Recalc settlement score (every time settlement changes)
     const settScore = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
-    // Total = accumulated pair score + settlement score
     gs.scores[slot] = gs.pairScores[slot] + settScore;
 
     // Refill public pool
@@ -283,9 +286,10 @@ export class GameRoom {
 
     gs.selectedHandCard = null;
 
+    // Mark game-end pending if hand empty (but don't end yet — wait for opponent's turn)
     if (gs.hands[slot].length === 0) {
-      this.endGame();
-      return;
+      gs.pendingGameEnd = true;
+      // Fall through to matching → dismiss will switch turn
     }
 
     gs.phase = 'matching';
@@ -317,11 +321,30 @@ export class GameRoom {
     if (!slot || !gs || gs.phase !== 'matching' || gs.currentPlayer !== slot) return;
 
     gs.lastMatchResult = null;
-    gs.currentPlayer = opp(slot);
 
-    if ((gs.hands[gs.currentPlayer] ?? []).length === 0) {
-      this.endGame();
+    const nextPlayer = opp(slot);
+
+    // If game end was already pending and we've switched back to the player who ran out,
+    // or if the next player also has no hand → end game
+    if (gs.pendingGameEnd) {
+      // If the current player (slot) just completed their turn, check if the next player is the one with no hand
+      if ((gs.hands[nextPlayer] ?? []).length === 0) {
+        this.endGame();
+        return;
+      }
+      // Otherwise, switch and let the next player play their final turn
+      gs.currentPlayer = nextPlayer;
+      gs.phase = 'selecting-card';
+      this.pushBoth();
       return;
+    }
+
+    // Normal turn switch
+    gs.currentPlayer = nextPlayer;
+
+    // If the next player has no hand, mark pending end
+    if ((gs.hands[gs.currentPlayer] ?? []).length === 0) {
+      gs.pendingGameEnd = true;
     }
 
     gs.phase = 'selecting-card';

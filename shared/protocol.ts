@@ -2,7 +2,7 @@ export interface Card { id: string; name: string; description?: string; category
 export type RelationType = 'prerequisite' | 'causal' | 'analogy' | 'generalization' | 'application';
 export const RELATION_SCORES: Record<RelationType, number> = { prerequisite: 3, causal: 4, analogy: 2, generalization: 3, application: 3 };
 export const RELATION_LABELS: Record<RelationType, string> = { prerequisite: '前置知识', causal: '因果关系', analogy: '类比概念', generalization: '泛化/特例', application: '实际应用' };
-export interface Relation { cardA: string; cardB: string; type: RelationType; explanation: string; score?: number; }
+export interface Relation { cardA: string; cardB: string; cardC?: string; type: RelationType; explanation: string; score?: number; }
 export interface DeckMeta { name: string; description: string; author: string; version: string; }
 export interface Deck { meta: DeckMeta; cards: Card[]; relations: Relation[]; }
 export type PlayerSlot = 'player1' | 'player2';
