@@ -36,14 +36,28 @@ const Game: React.FC = () => {
   const displayPhase = game.phase;
   const isMyTurn = displayPhase === 'deck_select' ? (game.deckSelector === game.mySlot) : (game.currentPlayer === game.mySlot);
   const COIN_LABEL: Record<string, string> = { 'heads': '🪙 正面', 'tails': '🪙 反面' };
+  const COIN_EMOJI: Record<string, string> = { 'heads': '🪙', 'tails': '📀' };
   const isDiscardingMode = !!game.isDiscarding;
 
   const mySettScore = (game.myScore ?? 0) - (game.myPairScore ?? 0);
   const oppSettScore = (game.opponentScore ?? 0) - (game.opponentPairScore ?? 0);
 
+  const phaseLabel: Record<string, string> = {
+    coin_toss: '抛硬币', deck_select: '选牌组', playing: '对战中',
+    'selecting-card': '选牌中', matching: '判定中', round_over: '结束',
+    match_over: '比赛结束',
+  };
+
   return (
     <div className="page page-game">
-      {/* Score Header */}
+      <div className="game-header">
+        <div className="game-phase">{phaseLabel[displayPhase] || displayPhase}</div>
+        <button className="btn btn-sm btn-secondary" onClick={() => navigate('/lobby')}>
+          ← 大厅
+        </button>
+      </div>
+
+      {/* Scoreboard */}
       <div className="scoreboard">
         <div className="sb-player">
           <span className="sb-icon">🧑</span>
@@ -65,7 +79,7 @@ const Game: React.FC = () => {
       </div>
 
       {/* Coin Toss */}
-      {displayPhase === 'coin_toss' && (
+      {displayPhase === 'coin_toss' && !game.coinRevealed && (
         <div className="popup-overlay">
           <div className="popup popup-coin">
             <div className="popup-icon">🪙</div>
@@ -79,10 +93,24 @@ const Game: React.FC = () => {
                   🪙 正面
                 </button>
                 <button className="btn btn-primary" onClick={() => send({ type: 'game_coin_guess', guess: 'tails' })}>
-                  🪙 反面
+                  📀 反面
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Coin Result Reveal */}
+      {displayPhase === 'coin_toss' && game.coinRevealed && (
+        <div className="popup-overlay">
+          <div className="popup popup-coin">
+            <div className="popup-icon" style={{ fontSize: 64 }}>{COIN_EMOJI[game.coinResult ?? 'heads']}</div>
+            <div className="popup-title">结果: {COIN_LABEL[game.coinResult ?? 'heads']}</div>
+            <p style={{ color: '#4af', fontSize: 14 }}>
+              {game.coinGuessed ? '你猜对了！你有优先选牌权' : '你没猜对，对方先选卡组'}
+            </p>
+            <p style={{ color: '#888', fontSize: 12, marginTop: 8 }}>即将进入选牌阶段...</p>
           </div>
         </div>
       )}
@@ -138,50 +166,40 @@ const Game: React.FC = () => {
           {/* Discard-pick indicator */}
           {isDiscardingMode && (
             <div style={{ background: '#4a3020', borderRadius: 8, padding: '8px 16px', marginBottom: 8, textAlign: 'center' }}>
-              <span style={{ color: '#fa0', fontWeight: 'bold' }}>🃏 换牌阶段：从公共牌池中选择一张牌换入手牌</span>
+              🔄 请从公共牌池选择一张牌换入手牌 (不可选回你刚放入的牌)
             </div>
           )}
 
-          {/* Opponent Hand */}
-          <div className="opponent-area" style={{ marginBottom: 8 }}>
-            <div className="hand-label">对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span></div>
-            <div className="hand-cards">
-              {Array.from({ length: game.opponentHandCount }).map((_, i) => (
-                <CardComponent key={i} card={{ id: 'back', name: '?' }} size="medium" inHand disabled />
-              ))}
-            </div>
-          </div>
-
           {/* Public Pool */}
           <div className="public-pool" style={{ marginBottom: 8 }}>
-            <div className="hand-label">公共牌池 <span className="hand-count">(余{game.drawPileCount}张)</span></div>
+            <div className="hand-label">
+              🃏 公共牌池
+              <span className="hand-count">({game.publicPool.length} 张 | 牌堆剩余 {game.drawPileCount})</span>
+            </div>
             <div className="hand-cards">
               {game.publicPool.map((card) => {
-                const canSelectInDiscard = isDiscardingMode && isMyTurn;
-                const canSelectNormal = game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard;
-                const canSelect = canSelectInDiscard || canSelectNormal;
-                const isSelected = game.selectedHandCard?.id === card.id;
+                const canPick = game.phase === 'selecting-card' && isMyTurn;
                 return (
                   <CardComponent
                     key={card.id}
                     card={card}
                     size="medium"
-                    selected={isSelected}
-                    disabled={!canSelect}
-                    onClick={() => canSelect && send({ type: 'game_pick_public', cardId: card.id })}
+                    disabled={!canPick}
+                    onClick={() => canPick && send({ type: 'game_pick_public', cardId: card.id })}
                   />
                 );
               })}
             </div>
           </div>
 
-          {/* Turn indicator / action bar */}
-          <div className="game-info-bar" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="info-deck">📚 {game.myDeckId ?? '对战'}</span>
-            <span style={{ color: isMyTurn ? '#4af' : '#888', fontSize: 13 }}>
-              {isDiscardingMode ? (isMyTurn ? '🃏 选择一张公池牌' : '⏳ 对手换牌中') : (isMyTurn ? '⚡ 你的回合' : '⏳ 对手回合')}
-            </span>
-            {!isDiscardingMode && game.phase === 'selecting-card' && isMyTurn && game.selectedHandCard && (
+          {/* Opponent hand count */}
+          <div className="hand-label" style={{ marginBottom: 4 }}>
+            🤖 对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+            {game.phase === 'selecting-card' && isMyTurn && !isDiscardingMode && game.selectedHandCard && (
               <button
                 className="btn btn-sm btn-secondary"
                 onClick={() => send({ type: 'game_discard_hand' })}

@@ -97,6 +97,7 @@ export class GameRoom {
   coinResult: 'heads' | 'tails' | null = null;
   coinGuesses: Partial<Record<PlayerSlot, 'heads' | 'tails'>> = {};
   coinTimer: NodeJS.Timeout | null = null;
+  coinRevealed: boolean = false;
   selectedDecks: Partial<Record<PlayerSlot, string>> = {};
 
   private onMatchEnd: ((winnerId: string | null) => void) | null = null;
@@ -134,6 +135,7 @@ export class GameRoom {
   startMatch(): void {
     this.coinResult = Math.random() < 0.5 ? 'heads' : 'tails';
     this.coinGuesses = {};
+    this.coinRevealed = false;
     this.phase = 'coin_toss';
     this.round = 0;
     if (this.coinTimer) clearTimeout(this.coinTimer);
@@ -153,12 +155,22 @@ export class GameRoom {
   }
 
   private resolveCoinToss(): void {
+    if (this.coinRevealed) return; // already revealed
+    this.coinRevealed = true;
+
     const p1Win = this.coinGuesses.player1 === this.coinResult;
     const selector: PlayerSlot = p1Win ? 'player1' : 'player2';
     this.deckSelector = selector;
     this.selectedDecks = {};
-    this.phase = 'deck_select';
+
+    // Push the coin result first so both players see it
     this.pushBoth();
+
+    // Wait 2.5 seconds for players to see the coin result, then move to deck select
+    setTimeout(() => {
+      this.phase = 'deck_select';
+      this.pushBoth();
+    }, 2500);
   }
 
   selectDeck(playerId: string, deckId: string): void {
@@ -322,17 +334,23 @@ export class GameRoom {
 
     gs.lastMatchResult = null;
 
+    // The "second mover" is the coin-toss loser (plays second in each round).
+    // Game should only end after the second mover completes their action.
+    const secondMover = opp(this.deckSelector);
     const nextPlayer = opp(slot);
 
-    // If game end was already pending and we've switched back to the player who ran out,
-    // or if the next player also has no hand → end game
     if (gs.pendingGameEnd) {
-      // If the current player (slot) just completed their turn, check if the next player is the one with no hand
-      if ((gs.hands[nextPlayer] ?? []).length === 0) {
+      // Check if the second mover just completed their action → game truly ends
+      if (slot === secondMover) {
         this.endGame();
         return;
       }
-      // Otherwise, switch and let the next player play their final turn
+      // First mover ran out first; let second mover complete their turn
+      if ((gs.hands[nextPlayer] ?? []).length === 0) {
+        // Second mover also has no hand, end immediately
+        this.endGame();
+        return;
+      }
       gs.currentPlayer = nextPlayer;
       gs.phase = 'selecting-card';
       this.pushBoth();
@@ -429,6 +447,7 @@ export class GameRoom {
       coinResult: this.coinResult ?? undefined,
       coinGuessed: !!this.coinGuesses[slot],
       coinMyGuess: this.coinGuesses[slot],
+      coinRevealed: this.coinRevealed || undefined,
       mySlot: slot,
       isDiscarding: false,
     };

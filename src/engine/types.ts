@@ -16,6 +16,7 @@ export interface GameStateForPlayer {
   roundNumber: number; myRoundWins: number; opponentRoundWins: number; deckSelector: PlayerSlot;
   availableDeckIds: string[]; myDeckId: string | null; opponentDeckId: string | null;
   coinResult?: 'heads' | 'tails'; coinGuessed?: boolean; coinMyGuess?: 'heads' | 'tails'; mySlot: 'player1' | 'player2';
+  coinRevealed?: boolean;
   selectedHandCard?: Card | null; hasMatchingPoolCard?: boolean;
   isDiscarding?: boolean;
 }
