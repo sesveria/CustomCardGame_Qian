@@ -38,6 +38,9 @@ const Game: React.FC = () => {
   const COIN_LABEL: Record<string, string> = { 'heads': '🪙 正面', 'tails': '🪙 反面' };
   const isDiscardingMode = !!game.isDiscarding;
 
+  const mySettScore = (game.myScore ?? 0) - (game.myPairScore ?? 0);
+  const oppSettScore = (game.opponentScore ?? 0) - (game.opponentPairScore ?? 0);
+
   return (
     <div className="page page-game">
       {/* Score Header */}
@@ -46,12 +49,18 @@ const Game: React.FC = () => {
           <span className="sb-icon">🧑</span>
           <span className="sb-name">你</span>
           <span className="sb-score">{game.myScore} 分</span>
+          <span style={{fontSize:11,color:'#888',marginLeft:6}}>
+            (配对 {game.myPairScore ?? 0} + 结算 {mySettScore})
+          </span>
         </div>
         <div className="sb-vs">VS</div>
         <div className="sb-player">
           <span className="sb-icon">🤖</span>
           <span className="sb-name">对手</span>
           <span className="sb-score">{game.opponentScore} 分</span>
+          <span style={{fontSize:11,color:'#888',marginLeft:6}}>
+            (配对 {game.opponentPairScore ?? 0} + 结算 {oppSettScore})
+          </span>
         </div>
       </div>
 
@@ -109,7 +118,7 @@ const Game: React.FC = () => {
           {/* Settlement zones */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
             <div className="settlement-zone" style={{ flex: 1, background: '#1a2a3a', borderRadius: 8, padding: 6, minHeight: 60 }}>
-              <div className="hand-label">🧑 你的结算区 <span style={{color:'#4af'}}>得分:{game.myScore}</span></div>
+              <div className="hand-label">🧑 你的结算区 <span style={{color:'#4af'}}>得分:{mySettScore}</span></div>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {(game.mySettlement ?? []).map(c => (
                   <CardComponent key={c.id} card={c} size="small" />
@@ -117,7 +126,7 @@ const Game: React.FC = () => {
               </div>
             </div>
             <div className="settlement-zone" style={{ flex: 1, background: '#2a1a1a', borderRadius: 8, padding: 6, minHeight: 60 }}>
-              <div className="hand-label">🤖 对手结算区 <span style={{color:'#f44'}}>得分:{game.opponentScore}</span></div>
+              <div className="hand-label">🤖 对手结算区 <span style={{color:'#f44'}}>得分:{oppSettScore}</span></div>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {(game.opponentSettlement ?? []).map(c => (
                   <CardComponent key={c.id} card={c} size="small" />
@@ -248,8 +257,8 @@ const Game: React.FC = () => {
               {game.myScore > game.opponentScore ? '恭喜你赢了！' : game.myScore < game.opponentScore ? '对手获胜' : '平局'}
             </div>
             <div className="gameover-scores">
-              <div>你: {game.myScore} 分 (结算区 {game.mySettlement?.length ?? 0} 张)</div>
-              <div>对手: {game.opponentScore} 分 (结算区 {game.opponentSettlement?.length ?? 0} 张)</div>
+              <div>你: {game.myScore} 分 (配对 {game.myPairScore ?? 0} + 结算 {mySettScore}，结算区 {game.mySettlement?.length ?? 0} 张)</div>
+              <div>对手: {game.opponentScore} 分 (配对 {game.opponentPairScore ?? 0} + 结算 {oppSettScore}，结算区 {game.opponentSettlement?.length ?? 0} 张)</div>
             </div>
             <div className="gameover-pairs">
               <h3>配对记录</h3>

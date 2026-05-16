@@ -10,6 +10,7 @@ export interface GameStateForPlayer {
   phase: 'coin_toss' | 'deck_select' | 'playing' | 'selecting-card' | 'matching' | 'round_over' | 'match_over';
   currentPlayer: PlayerSlot | null; myHand: Card[]; opponentHandCount: number; publicPool: Card[]; drawPileCount: number;
   myScore: number; opponentScore: number;
+  myPairScore: number; opponentPairScore: number;
   mySettlement: Card[]; opponentSettlement: Card[];
   lastMatchResult: MatchResult | null; matchedPairs: MatchedPairPublic[];
   roundNumber: number; myRoundWins: number; opponentRoundWins: number; deckSelector: PlayerSlot;

@@ -10,6 +10,7 @@ export type PlayerSlot = 'player1' | 'player2';
 export interface GameStateForPlayer {
   phase: GamePhaseCS; currentPlayer: PlayerSlot | null; myHand: Card[]; opponentHandCount: number; publicPool: Card[]; drawPileCount: number;
   myScore: number; opponentScore: number;
+  myPairScore: number; opponentPairScore: number;
   mySettlement: Card[]; opponentSettlement: Card[];
   lastMatchResult: MatchResult | null; matchedPairs: MatchedPairPublic[];
   roundNumber: number; myRoundWins: number; opponentRoundWins: number; deckSelector: PlayerSlot;

@@ -11,6 +11,9 @@ interface FullGameState {
   publicPool: Card[];
   hands: Record<PlayerSlot, Card[]>;
   settlement: Record<PlayerSlot, Card[]>;
+  /** Accumulated pair-matching score (never decreases) */
+  pairScores: Record<PlayerSlot, number>;
+  /** Total score = pairScore + settlementScore */
   scores: Record<PlayerSlot, number>;
   currentPlayer: PlayerSlot;
   selectedHandCard: Card | null;
@@ -45,7 +48,7 @@ function findAnyMatchingRelation(card: Card, pool: Card[], relations: Relation[]
 }
 
 /**
- * Recalculate score for a player's settlement zone.
+ * Recalculate settlement score for a player's settlement zone.
  * Scores every relation where BOTH cards live in that player's settlement.
  */
 function recalcSettlementScore(
@@ -185,6 +188,7 @@ export class GameRoom {
       publicPool: pool,
       hands: { player1: hand1, player2: hand2 },
       settlement: { player1: [], player2: [] },
+      pairScores: { player1: 0, player2: 0 },
       scores: { player1: 0, player2: 0 },
       currentPlayer: this.deckSelector,
       selectedHandCard: null,
@@ -196,7 +200,6 @@ export class GameRoom {
     };
     this.phase = 'playing';
 
-    // Check if current player has no hand cards (shouldn't happen at game start, but be safe)
     if ((this.gameState.hands[this.gameState.currentPlayer] ?? []).length === 0) {
       this.endGame();
       return;
@@ -247,38 +250,39 @@ export class GameRoom {
     const handCard = gs.selectedHandCard;
     const relation = findRelation(handCard, publicCard, gs.deck.relations);
 
-    // Whether match or not: BOTH cards go to settlement
-    // Remove hand card from hand
+    // Both cards go to settlement
     gs.hands[slot] = gs.hands[slot].filter(c => c.id !== handCard.id);
-    // Remove public card from pool
     gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
 
-    // Add both to settlement
     gs.settlement[slot].push(handCard);
     gs.settlement[slot].push(publicCard);
 
-    // Recalc settlement score for this player
-    gs.scores[slot] = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
-
     if (relation) {
+      const pairScore = relation.score ?? (RELATION_SCORES[relation.type] ?? 3);
+      // Accumulate pair score
+      gs.pairScores[slot] += pairScore;
+
       gs.matchedPairs.push({
         cardA: handCard.name, cardB: publicCard.name,
         relationType: relation.type, explanation: relation.explanation, player: slot,
       });
-      const score = relation.score ?? (RELATION_SCORES[relation.type] ?? 3);
-      gs.lastMatchResult = { success: true, relation, explanation: relation.explanation, score };
+      gs.lastMatchResult = { success: true, relation, explanation: relation.explanation, score: pairScore };
     } else {
       gs.lastMatchResult = { success: false, score: 0, explanation: '没有关联，双方卡牌进入结算区' };
     }
 
-    // Refill public pool from draw pile (1 card)
+    // Recalc settlement score (every time settlement changes)
+    const settScore = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
+    // Total = accumulated pair score + settlement score
+    gs.scores[slot] = gs.pairScores[slot] + settScore;
+
+    // Refill public pool
     const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
     gs.drawPile = remaining;
     gs.publicPool = [...gs.publicPool, ...drawn];
 
     gs.selectedHandCard = null;
 
-    // Check if current player has no hand cards → game over
     if (gs.hands[slot].length === 0) {
       this.endGame();
       return;
@@ -288,7 +292,6 @@ export class GameRoom {
     this.pushBoth();
   }
 
-  /** Discard hand card to pool, then player picks from pool (two-step) */
   discardHandCard(playerId: string): void {
     const slot = this.slot(playerId);
     const gs = this.gameState;
@@ -314,11 +317,8 @@ export class GameRoom {
     if (!slot || !gs || gs.phase !== 'matching' || gs.currentPlayer !== slot) return;
 
     gs.lastMatchResult = null;
-
-    // Switch turn
     gs.currentPlayer = opp(slot);
 
-    // Check if the next player has no hand cards → game over
     if ((gs.hands[gs.currentPlayer] ?? []).length === 0) {
       this.endGame();
       return;
@@ -393,6 +393,7 @@ export class GameRoom {
       phase: this.phase as any,
       currentPlayer: null, myHand: [], opponentHandCount: 0, publicPool: [], drawPileCount: 0,
       myScore: 0, opponentScore: 0,
+      myPairScore: 0, opponentPairScore: 0,
       mySettlement: [], opponentSettlement: [],
       lastMatchResult: null, matchedPairs: [],
       roundNumber: this.round,
@@ -415,6 +416,8 @@ export class GameRoom {
       base.opponentHandCount = (gs.hands[oppSlot] ?? []).length;
       base.publicPool = gs.publicPool;
       base.drawPileCount = gs.drawPile.length;
+      base.myPairScore = gs.pairScores[slot] ?? 0;
+      base.opponentPairScore = gs.pairScores[oppSlot] ?? 0;
       base.myScore = gs.scores[slot] ?? 0;
       base.opponentScore = gs.scores[oppSlot] ?? 0;
       base.mySettlement = gs.settlement[slot] ?? [];
