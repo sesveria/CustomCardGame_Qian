@@ -102,10 +102,10 @@ const Game: React.FC = () => {
           {!game.coinRevealed ? (
             /* ── Guess Phase ── */
             <div className="popup popup-coin">
-              <div className="popup-title">🪙 抛硬币决定选牌权</div>
+              <div className="popup-title">抛硬币决定选牌权</div>
               <div className="popup-subtitle">猜对的一方优先选择卡组</div>
 
-              <div className="coin-circle coin-idle" aria-label="硬币待猜">
+              <div className="coin-circle" aria-label="硬币待猜">
                 <span className="coin-char">?</span>
               </div>
 
@@ -136,9 +136,9 @@ const Game: React.FC = () => {
             /* ── Reveal Phase ── */
             <div className="popup popup-coin">
               <div className="coin-reveal">
-                <div className="popup-title">🪙 硬币结果</div>
+                <div className="popup-title">硬币结果</div>
 
-                <div className={`coin-circle coin-revealed ${game.coinResult === 'heads' ? 'coin-heads' : 'coin-tails'}`}>
+                <div className={`coin-circle ${game.coinResult === 'heads' ? 'coin-heads' : 'coin-tails'}`}>
                   <span className="coin-char">{game.coinResult === 'heads' ? '正' : '反'}</span>
                 </div>
 

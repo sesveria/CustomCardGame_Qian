@@ -16,6 +16,10 @@
   --silver: #c0c0c0;
   --radius: 8px;
   --radius-lg: 12px;
+  --coin-gold: #f5c842;
+  --coin-gold-dark: #b8860b;
+  --coin-silver: #d4d4d4;
+  --coin-silver-dark: #707070;
 }
 
 body {
@@ -69,10 +73,7 @@ body {
 .page-game { display: flex; flex-direction: column; height: 100vh; padding-top: 12px; padding-bottom: 12px; max-width: 1200px; }
 .game-empty { text-align: center; padding-top: 100px; }
 .game-empty p { margin-bottom: 16px; font-size: 20px; }
-.game-area { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-.game-board-section { flex: 1; min-height: 0; }
-.game-info-bar { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; }
-.info-deck { font-size: 13px; color: var(--text-secondary); }
+.game-main { flex: 1; min-height: 0; }
 
 /* ─── Game Header ─── */
 .game-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px; margin-bottom: 4px; }
@@ -103,8 +104,6 @@ body {
 .sb-progress-bar.my { background: linear-gradient(90deg, var(--accent-blue), #6db3f2); border-radius: 4px 0 0 4px; }
 .sb-progress-bar.opp { background: linear-gradient(90deg, #f06080, var(--accent)); border-radius: 0 4px 4px 0; }
 .sb-progress-spacer { flex: 1; }
-.sb-round-wins { font-size: 16px; color: var(--gold); margin-left: 4px; }
-.sb-round { font-size: 12px; color: var(--accent-blue); margin-top: 2px; }
 
 @keyframes pulse-score {
   0% { transform: scale(1); }
@@ -122,7 +121,7 @@ body {
 .settlement-zone .sett-score { font-weight: 700; font-size: 15px; }
 .settlement-zone .sett-score.my { color: var(--accent-blue); }
 .settlement-zone .sett-score.opp { color: var(--accent); }
-.settlement-zone .sett-cards { display: flex; gap: 4px; flex-wrap: wrap; min-height: 28px; }
+.sett-cards { display: flex; gap: 4px; flex-wrap: wrap; min-height: 28px; }
 
 /* ─── Public Pool ─── */
 .public-pool {
@@ -183,7 +182,7 @@ body {
   animation: fadeIn .2s ease;
 }
 .popup {
-  background: linear-gradient(180deg, #1e1e36 0%, #18182a 100%);
+  background: #1a1a30;
   border-radius: var(--radius-lg); padding: 36px 40px;
   min-width: 360px; max-width: 92vw; text-align: center;
   box-shadow: 0 16px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
@@ -215,37 +214,34 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes bounceIn { 0% { transform: scale(.8); opacity: 0; } 60% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+
 /* ══════════════════ COIN ══════════════════ */
-/* Coin circle — idle state (before reveal) */
+/* Coin circle — simple solid-color disk with border */
 .coin-circle {
   width: 100px; height: 100px; margin: 20px auto;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 40% 35%, #ffe44d, #c8960c);
-  box-shadow: 0 0 24px rgba(255,200,0,.45), inset 0 0 0 3px #a07808;
-  animation: coin-shimmer 2s ease-in-out infinite;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #d4a017;
+  border: 4px solid #a07808;
+  box-shadow: 0 0 24px rgba(255,200,0,.45);
 }
+.coin-circle.coin-heads,
 .coin-circle.coin-idle {
-  background: radial-gradient(circle at 40% 35%, #ffe44d, #c8960c);
-}
-.coin-circle.coin-revealed {
-  animation: bounceIn .4s ease;
-}
-.coin-circle.coin-heads {
-  background: radial-gradient(circle at 40% 35%, #ffe44d, #c8960c);
-  box-shadow: 0 0 30px rgba(255,200,0,.55), inset 0 0 0 3px #a07808;
+  background: #d4a017;
+  border-color: #a07808;
+  box-shadow: 0 0 24px rgba(255,200,0,.45);
 }
 .coin-circle.coin-tails {
-  background: radial-gradient(circle at 40% 35%, #e0e0e0, #808080);
-  box-shadow: 0 0 30px rgba(180,180,180,.55), inset 0 0 0 3px #555;
+  background: #909090;
+  border-color: #555;
+  box-shadow: 0 0 24px rgba(180,180,180,.45);
 }
 .coin-char {
   font-size: 42px; font-weight: 900; color: #6b4c00;
-  text-shadow: 0 2px 0 rgba(255,255,255,.3);
   line-height: 1;
 }
 .coin-tails .coin-char {
   color: #333;
-  text-shadow: 0 2px 0 rgba(255,255,255,.4);
 }
 .coin-guessed-msg {
   font-size: 14px; color: var(--text-secondary); margin-top: 16px;
@@ -254,11 +250,8 @@ body {
   font-size: 20px; font-weight: 700; color: var(--text-primary);
   margin: 12px 0 8px;
 }
-@keyframes coin-shimmer {
-  0%, 100% { box-shadow: 0 0 20px rgba(255,200,0,.45), inset 0 0 0 3px #a07808; }
-  50% { box-shadow: 0 0 36px rgba(255,200,0,.65), inset 0 0 0 3px #a07808; }
-}
 
+/* Guess buttons */
 .coin-guess-row { display: flex; gap: 16px; justify-content: center; margin-top: 18px; }
 .coin-guess-btn {
   width: 120px; padding: 16px 20px; border-radius: var(--radius-lg);
@@ -274,26 +267,20 @@ body {
 .coin-guess-btn:active { transform: scale(.96); }
 
 /* Reveal */
-.coin-reveal { text-align: center; animation: bounceIn .4s ease; }
-
+.coin-reveal { text-align: center; }
 .coin-result-label {
   font-size: 16px; font-weight: 700; margin: 12px 0;
   padding: 6px 20px; border-radius: 20px; display: inline-block;
 }
 .coin-result-label.won {
   background: rgba(39,174,96,.15); color: var(--success);
-  box-shadow: 0 0 12px rgba(39,174,96,.2);
 }
 .coin-result-label.lost {
   background: rgba(192,57,43,.15); color: var(--fail);
-  box-shadow: 0 0 12px rgba(192,57,43,.2);
 }
 .coin-wait-text {
   font-size: 13px; color: var(--text-secondary); margin-top: 10px;
-  animation: pulse-text 1.5s ease-in-out infinite;
 }
-@keyframes pulse-text { 0%,100%{opacity:.5} 50%{opacity:1} }
-
 /* ─── Deck Select ─── */
 .deck-btn {
   padding: 12px 24px; background: var(--bg-card); border: 2px solid rgba(255,255,255,.08);
