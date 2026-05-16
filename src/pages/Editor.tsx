@@ -4,8 +4,9 @@ import type { Card, Relation, RelationType, Deck } from '../engine/types';
 import { RELATION_LABELS, RELATION_SCORES } from '../engine/types';
 
 const sampleDeck: Deck = {
-  meta: { name: '初中物理 — 力学', description: '覆盖牛顿定律、力、运动等核心概念的关系', author: '系统', version: '1.0' },
+  meta: { name: '初中物理 — 力学', description: '覆盖牛顿定律、力、运动、电学等核心概念的关系', author: '系统', version: '2.0' },
   cards: [
+    // 力学
     { id: 'newton1', name: '牛顿第一定律', description: '一切物体在不受外力时总保持匀速直线运动或静止状态', category: '定律' },
     { id: 'inertia', name: '惯性', description: '物体保持原来运动状态不变的性质', category: '概念' },
     { id: 'newton2', name: '牛顿第二定律', description: '物体加速度的大小与合外力成正比，与质量成反比', category: '定律' },
@@ -15,20 +16,117 @@ const sampleDeck: Deck = {
     { id: 'mass', name: '质量', description: '物体所含物质的多少，国际单位是千克', category: '概念' },
     { id: 'newton3', name: '牛顿第三定律', description: '作用力与反作用力大小相等、方向相反', category: '定律' },
     { id: 'gravity', name: '重力', description: '地球对物体的吸引力，G = mg', category: '概念' },
+    { id: 'gformula', name: 'G = mg', description: '重力 = 质量 × 重力加速度', category: '公式' },
     { id: 'friction', name: '摩擦力', description: '两个相互接触的物体相对滑动时产生的阻力', category: '概念' },
     { id: 'velocity', name: '速度', description: '单位时间内物体移动的距离，v = s/t', category: '概念' },
+    { id: 'displacement', name: '位移', description: '物体位置变化的有向线段', category: '概念' },
     { id: 'momentum', name: '动量', description: '物体的质量与速度的乘积，p = mv', category: '概念' },
+    { id: 'energy', name: '能量', description: '物体做功的本领', category: '概念' },
+    { id: 'work', name: '功', description: '力与在力方向上位移的乘积，W = Fs', category: '概念' },
+    { id: 'hooke', name: '胡克定律', description: '弹簧的弹力与形变量成正比，F = kx', category: '定律' },
+    { id: 'spring', name: '弹力', description: '物体发生弹性形变时产生的力', category: '概念' },
+    { id: 'pressure', name: '压强', description: '单位面积上受到的压力，p = F/S', category: '概念' },
+    { id: 'archimedes', name: '阿基米德原理', description: '浸在液体中的物体受到的浮力等于排开液体的重力', category: '定律' },
+    { id: 'buoyancy', name: '浮力', description: '液体对浸在其中物体的向上托力', category: '概念' },
+    { id: 'density', name: '密度', description: '单位体积内物质的质量，ρ = m/V', category: '概念' },
+    { id: 'equilibrium', name: '二力平衡', description: '两个力大小相等、方向相反、作用在同一直线上', category: '概念' },
+    { id: 'freebody', name: '受力分析', description: '分析物体受到的所有外力', category: '方法' },
+    { id: 'power', name: '功率', description: '单位时间内所做的功，P = W/t', category: '概念' },
+    { id: 'kinetic', name: '动能', description: '物体由于运动而具有的能量，Ek = ½mv²', category: '概念' },
+    { id: 'potential', name: '势能', description: '物体由于位置或形变而具有的能量', category: '概念' },
+    // 电学
+    { id: 'ohm', name: '欧姆定律', description: '导体中的电流与电压成正比，与电阻成反比', category: '定律' },
+    { id: 'current', name: '电流', description: '单位时间内通过导体截面的电荷量，I = Q/t', category: '概念' },
+    { id: 'voltage', name: '电压', description: '电路两点间的电位差', category: '概念' },
+    { id: 'resistance', name: '电阻', description: '导体对电流的阻碍作用', category: '概念' },
+    { id: 'powerlaw', name: 'P = UI', description: '电功率 = 电压 × 电流', category: '公式' },
+    { id: 'joule', name: '焦耳定律', description: '电流通过导体产生的热量与电流平方、电阻和时间成正比', category: '定律' },
+    { id: 'circuit', name: '电路', description: '电流流通的路径，包括电源、导线、负载', category: '概念' },
+    { id: 'series', name: '串联电路', description: '电流依次流过各元件的电路连接方式', category: '概念' },
+    { id: 'parallel', name: '并联电路', description: '电流分多路流过各元件的电路连接方式', category: '概念' },
+    { id: 'emag', name: '电磁感应', description: '变化的磁场在导体中产生电动势的现象', category: '概念' },
+    { id: 'magnetic', name: '磁场', description: '磁体周围对磁极有力的作用的空间', category: '概念' },
   ],
   relations: [
+    // 力学两卡关联
     { cardA: 'newton1', cardB: 'inertia', type: 'generalization', explanation: '牛顿第一定律又称惯性定律' },
     { cardA: 'newton2', cardB: 'fma', type: 'application', explanation: 'F=ma 是牛顿第二定律的数学表达式' },
     { cardA: 'newton2', cardB: 'force', type: 'causal', explanation: '牛顿第二定律定量描述了力与运动的关系' },
+    { cardA: 'newton2', cardB: 'accel', type: 'causal', explanation: '牛顿第二定律指出力是产生加速度的原因' },
+    { cardA: 'newton2', cardB: 'mass', type: 'application', explanation: '牛顿第二定律建立了力、质量、加速度的定量关系' },
     { cardA: 'force', cardB: 'accel', type: 'causal', explanation: '力是产生加速度的原因' },
     { cardA: 'mass', cardB: 'inertia', type: 'analogy', explanation: '质量越大，惯性越大——质量是惯性的量度' },
     { cardA: 'newton3', cardB: 'force', type: 'application', explanation: '牛顿第三定律描述了力的相互作用本质' },
+    { cardA: 'gravity', cardB: 'gformula', type: 'application', explanation: 'G=mg 是重力大小的计算公式' },
     { cardA: 'gravity', cardB: 'force', type: 'generalization', explanation: '重力是一种特殊的力' },
+    { cardA: 'gravity', cardB: 'mass', type: 'application', explanation: '物体重力与质量成正比' },
     { cardA: 'friction', cardB: 'force', type: 'generalization', explanation: '摩擦力是一种力' },
-    { cardA: 'velocity', cardB: 'momentum', type: 'prerequisite', explanation: '速度是动量的组成部分' },
+    { cardA: 'friction', cardB: 'newton1', type: 'prerequisite', explanation: '理解摩擦力需要先掌握牛顿第一定律' },
+    { cardA: 'velocity', cardB: 'displacement', type: 'prerequisite', explanation: '速度的定义依赖于位移的概念' },
+    { cardA: 'momentum', cardB: 'mass', type: 'application', explanation: '动量 = 质量 × 速度，质量是动量的组成部分' },
+    { cardA: 'momentum', cardB: 'velocity', type: 'application', explanation: '动量 = 质量 × 速度，速度是动量的组成部分' },
+    { cardA: 'energy', cardB: 'work', type: 'prerequisite', explanation: '功是能量转化的量度' },
+    { cardA: 'work', cardB: 'force', type: 'application', explanation: '功 = 力 × 位移，力是做功的主体' },
+    { cardA: 'work', cardB: 'displacement', type: 'application', explanation: '功 = 力 × 位移，必须有位移才能做功' },
+    { cardA: 'hooke', cardB: 'spring', type: 'application', explanation: '胡克定律描述了弹力的变化规律' },
+    { cardA: 'spring', cardB: 'force', type: 'generalization', explanation: '弹力是一种力' },
+    { cardA: 'pressure', cardB: 'force', type: 'application', explanation: '压强 = 力 / 面积，力是压强的决定因素之一' },
+    { cardA: 'archimedes', cardB: 'buoyancy', type: 'prerequisite', explanation: '阿基米德原理揭示了浮力的本质' },
+    { cardA: 'buoyancy', cardB: 'density', type: 'causal', explanation: '物体密度与液体密度的关系决定浮沉' },
+    { cardA: 'density', cardB: 'mass', type: 'application', explanation: '密度 = 质量 / 体积，质量是密度的决定因素之一' },
+    { cardA: 'equilibrium', cardB: 'newton1', type: 'application', explanation: '二力平衡是牛顿第一定律的具体体现' },
+    { cardA: 'freebody', cardB: 'force', type: 'prerequisite', explanation: '受力分析以力的概念为基础' },
+    { cardA: 'freebody', cardB: 'equilibrium', type: 'application', explanation: '受力分析常用于判断二力平衡状态' },
+    { cardA: 'freebody', cardB: 'friction', type: 'application', explanation: '受力分析时摩擦力是常见考虑的力之一' },
+    { cardA: 'newton1', cardB: 'force', type: 'causal', explanation: '牛顿第一定律说明了力不是维持运动的原因' },
+    { cardA: 'accel', cardB: 'velocity', type: 'prerequisite', explanation: '加速度是速度的变化率' },
+    { cardA: 'energy', cardB: 'mass', type: 'application', explanation: 'E=mc² 揭示了质量与能量之间的关系' },
+    { cardA: 'power', cardB: 'work', type: 'prerequisite', explanation: '功率是做功的快慢' },
+    { cardA: 'kinetic', cardB: 'velocity', type: 'application', explanation: '动能与速度的平方成正比' },
+    { cardA: 'kinetic', cardB: 'mass', type: 'application', explanation: '动能与质量成正比' },
+    { cardA: 'potential', cardB: 'gravity', type: 'application', explanation: '重力势能是势能的一种' },
+    { cardA: 'power', cardB: 'energy', type: 'prerequisite', explanation: '功率是能量转化的速率' },
+    // 电学两卡关联
+    { cardA: 'ohm', cardB: 'current', type: 'causal', explanation: '欧姆定律揭示了电流与电压、电阻的关系' },
+    { cardA: 'ohm', cardB: 'voltage', type: 'causal', explanation: '欧姆定律：电压是产生电流的原因' },
+    { cardA: 'ohm', cardB: 'resistance', type: 'causal', explanation: '欧姆定律：电阻阻碍电流流动' },
+    { cardA: 'current', cardB: 'voltage', type: 'causal', explanation: '电压驱动电流流动' },
+    { cardA: 'resistance', cardB: 'current', type: 'causal', explanation: '电阻越大，电流越小' },
+    { cardA: 'powerlaw', cardB: 'current', type: 'application', explanation: '电功率与电流成正比' },
+    { cardA: 'powerlaw', cardB: 'voltage', type: 'application', explanation: '电功率与电压成正比' },
+    { cardA: 'joule', cardB: 'current', type: 'application', explanation: '焦耳定律：热量与电流平方成正比' },
+    { cardA: 'joule', cardB: 'resistance', type: 'application', explanation: '焦耳定律：热量与电阻成正比' },
+    { cardA: 'circuit', cardB: 'current', type: 'generalization', explanation: '电路是电流的流通路径' },
+    { cardA: 'series', cardB: 'circuit', type: 'generalization', explanation: '串联电路是电路的基本连接方式' },
+    { cardA: 'parallel', cardB: 'circuit', type: 'generalization', explanation: '并联电路是电路的基本连接方式' },
+    { cardA: 'series', cardB: 'parallel', type: 'analogy', explanation: '串联和并联是电路连接的两种基本方式' },
+    { cardA: 'emag', cardB: 'magnetic', type: 'causal', explanation: '电磁感应是磁场变化产生的现象' },
+    { cardA: 'emag', cardB: 'current', type: 'causal', explanation: '电磁感应可以产生感应电流' },
+    // 跨领域关联
+    { cardA: 'power', cardB: 'powerlaw', type: 'analogy', explanation: '力学功率与电功率都是能量转化的量度' },
+    { cardA: 'energy', cardB: 'joule', type: 'generalization', explanation: '焦耳定律描述的是电能转化为热能的过程' },
+    { cardA: 'force', cardB: 'voltage', type: 'analogy', explanation: '力是力学中的"驱动力"，电压是电学中的"驱动力"' },
+    { cardA: 'current', cardB: 'velocity', type: 'analogy', explanation: '电流类比于水流速度，都是某种"流动"的快慢' },
+    // 三卡关联
+    { cardA: 'newton2', cardB: 'force', cardC: 'accel', type: 'causal', explanation: '牛顿第二定律关联力、质量与加速度，三者构成力学核心三角', score: 8 },
+    { cardA: 'newton2', cardB: 'force', cardC: 'mass', type: 'application', explanation: 'F=ma 将力、质量、加速度三者定量关联', score: 8 },
+    { cardA: 'newton2', cardB: 'accel', cardC: 'mass', type: 'application', explanation: 'F=ma 建立了加速度、力、质量的三者关系', score: 8 },
+    { cardA: 'fma', cardB: 'force', cardC: 'mass', type: 'application', explanation: 'F=ma 公式直接表达了力、质量、加速度的定量关系', score: 10 },
+    { cardA: 'fma', cardB: 'force', cardC: 'accel', type: 'application', explanation: 'F=ma 公式直接表达了力与加速度的正比关系', score: 10 },
+    { cardA: 'fma', cardB: 'mass', cardC: 'accel', type: 'application', explanation: 'F=ma 公式表达了质量与加速度的反比关系', score: 8 },
+    { cardA: 'momentum', cardB: 'mass', cardC: 'velocity', type: 'application', explanation: '动量 = 质量 × 速度，三个物理量的经典关系', score: 8 },
+    { cardA: 'work', cardB: 'force', cardC: 'displacement', type: 'application', explanation: '功 = 力 × 位移，三个物理量的定量关系', score: 8 },
+    { cardA: 'kinetic', cardB: 'mass', cardC: 'velocity', type: 'application', explanation: '动能 = ½mv²，三个物理量的定量关系', score: 8 },
+    { cardA: 'gformula', cardB: 'gravity', cardC: 'mass', type: 'application', explanation: 'G=mg 将重力、质量、重力加速度三者关联', score: 6 },
+    { cardA: 'potential', cardB: 'gravity', cardC: 'mass', type: 'application', explanation: '重力势能 = mgh，三个物理量的关系', score: 6 },
+    { cardA: 'ohm', cardB: 'current', cardC: 'voltage', type: 'causal', explanation: '欧姆定律：电压与电流、电阻形成定量关系', score: 8 },
+    { cardA: 'ohm', cardB: 'current', cardC: 'resistance', type: 'causal', explanation: '欧姆定律：电流与电压、电阻形成定量关系', score: 8 },
+    { cardA: 'ohm', cardB: 'voltage', cardC: 'resistance', type: 'causal', explanation: '欧姆定律：电压与电流、电阻形成定量关系', score: 8 },
+    { cardA: 'powerlaw', cardB: 'current', cardC: 'voltage', type: 'application', explanation: 'P=UI 关联电功率、电流、电压', score: 8 },
+    { cardA: 'joule', cardB: 'current', cardC: 'resistance', type: 'application', explanation: '焦耳定律：Q=I²Rt，三者定量关系', score: 8 },
+    { cardA: 'circuit', cardB: 'series', cardC: 'parallel', type: 'generalization', explanation: '串联与并联是电路分析的两种基本连接方式', score: 4 },
+    { cardA: 'newton1', cardB: 'force', cardC: 'inertia', type: 'causal', explanation: '牛顿第一定律揭示力与惯性的关系', score: 6 },
+    { cardA: 'newton3', cardB: 'newton1', cardC: 'newton2', type: 'generalization', explanation: '牛顿三大定律构成经典力学的完整理论体系', score: 10 },
   ],
 };
 
@@ -50,12 +148,10 @@ const Editor: React.FC = () => {
   };
 
   const saveCard = (card: Card) => {
-    const idx = cards.findIndex((c) => c.id === card.id);
-    if (idx >= 0) {
-      const updated = [...cards];
-      updated[idx] = card;
-      setEditorDeck({ ...editorDeck, cards: updated });
-    }
+    setEditorDeck({
+      ...editorDeck,
+      cards: cards.some((c) => c.id === card.id) ? cards.map((c) => (c.id === card.id ? card : c)) : [...cards, card],
+    });
     setEditCard(null);
   };
 
@@ -63,40 +159,40 @@ const Editor: React.FC = () => {
     setEditorDeck({
       ...editorDeck,
       cards: cards.filter((c) => c.id !== id),
-      relations: relations.filter((r) => r.cardA !== id && r.cardB !== id),
+      relations: relations.filter((r) => r.cardA !== id && r.cardB !== id && r.cardC !== id),
     });
   };
 
   const addRelation = () => {
-    const newRel: Relation = { cardA: cards[0]?.id ?? '', cardB: cards[0]?.id ?? '', type: 'prerequisite', explanation: '' };
-    setEditorDeck({ ...editorDeck, relations: [...relations, newRel] });
-    setEditRelation(newRel);
+    const rel: Relation = { cardA: cards[0]?.id ?? '', cardB: cards[1]?.id ?? '', type: 'causal', explanation: '' };
+    setEditorDeck({ ...editorDeck, relations: [...relations, rel] });
+    setEditRelation(rel);
   };
 
   const saveRelation = (rel: Relation) => {
-    const idx = relations.indexOf(editRelation!);
-    if (idx >= 0) {
-      const updated = [...relations];
-      updated[idx] = rel;
-      setEditorDeck({ ...editorDeck, relations: updated });
-    }
+    setEditorDeck({
+      ...editorDeck,
+      relations: relations.includes(editRelation!) ? relations.map((r) => (r === editRelation! ? rel : r)) : [...relations, rel],
+    });
     setEditRelation(null);
   };
 
   const deleteRelation = (idx: number) => {
-    const updated = [...relations];
-    updated.splice(idx, 1);
-    setEditorDeck({ ...editorDeck, relations: updated });
+    const newRels = [...relations];
+    newRels.splice(idx, 1);
+    setEditorDeck({ ...editorDeck, relations: newRels });
   };
+
+  const getCardName = (id: string) => cards.find((c) => c.id === id)?.name ?? id;
 
   const handleImport = () => {
     try {
       const deck = JSON.parse(importText) as Deck;
-      if (!deck.meta || !deck.cards || !deck.relations) { alert('JSON 格式错误'); return; }
       setEditorDeck(deck);
       setImportText('');
-      alert('导入成功！');
-    } catch { alert('JSON 格式错误'); }
+    } catch {
+      alert('JSON 格式错误');
+    }
   };
 
   const handleExport = () => {
@@ -104,31 +200,27 @@ const Editor: React.FC = () => {
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `${editorDeck.meta.name}.json`; a.click();
+    a.href = url;
+    a.download = `${editorDeck.meta.name}.json`;
+    a.click();
     URL.revokeObjectURL(url);
   };
-
-  const getCardName = (id: string) => cards.find((c) => c.id === id)?.name ?? '(未知卡牌)';
 
   return (
     <div className="page page-editor">
       <div className="editor-header">
         <button className="btn btn-sm btn-secondary" onClick={() => navigate('/lobby')}>← 返回大厅</button>
-        <h1>卡组编辑器</h1>
-        <button className="btn btn-sm btn-secondary" onClick={handleExport}>📥 导出 JSON</button>
-      </div>
-
-      <div className="editor-meta">
-        <label>名称:</label>
-        <input value={editorDeck.meta.name} onChange={(e) => setEditorDeck({ ...editorDeck, meta: { ...editorDeck.meta, name: e.target.value } })} />
-        <label>描述:</label>
-        <input value={editorDeck.meta.description} onChange={(e) => setEditorDeck({ ...editorDeck, meta: { ...editorDeck.meta, description: e.target.value } })} />
+        <h2>卡组编辑器</h2>
+        <div>
+          <input value={editorDeck.meta.name} onChange={(e) => setEditorDeck({ ...editorDeck, meta: { ...editorDeck.meta, name: e.target.value } })} className="editor-meta-input" placeholder="卡组名称" />
+          <input value={editorDeck.meta.description} onChange={(e) => setEditorDeck({ ...editorDeck, meta: { ...editorDeck.meta, description: e.target.value } })} className="editor-meta-input" placeholder="描述" />
+        </div>
       </div>
 
       <div className="editor-tabs">
-        <button className={`tab-btn ${activeTab === 'cards' ? 'tab-active' : ''}`} onClick={() => setActiveTab('cards')}>🃏 卡牌 ({cards.length})</button>
-        <button className={`tab-btn ${activeTab === 'relations' ? 'tab-active' : ''}`} onClick={() => setActiveTab('relations')}>🔗 关联 ({relations.length})</button>
-        <button className={`tab-btn ${activeTab === 'import' ? 'tab-active' : ''}`} onClick={() => setActiveTab('import')}>📂 导入/导出</button>
+        <button className={`btn btn-sm ${activeTab === 'cards' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('cards')}>卡牌 ({cards.length})</button>
+        <button className={`btn btn-sm ${activeTab === 'relations' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('relations')}>关联 ({relations.length})</button>
+        <button className={`btn btn-sm ${activeTab === 'import' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('import')}>导入/导出</button>
       </div>
 
       {activeTab === 'cards' && (
@@ -137,9 +229,9 @@ const Editor: React.FC = () => {
           <div className="editor-list">
             {cards.map((card) => (
               <div key={card.id} className="editor-list-item">
-                {editCard?.id === card.id ? (
+                {editCard === card ? (
                   <div className="editor-card-edit">
-                    <input value={editCard.name} onChange={(e) => setEditCard({ ...editCard, name: e.target.value })} placeholder="名称" />
+                    <input value={editCard.name ?? ''} onChange={(e) => setEditCard({ ...editCard, name: e.target.value })} placeholder="名称" />
                     <input value={editCard.description ?? ''} onChange={(e) => setEditCard({ ...editCard, description: e.target.value })} placeholder="描述" />
                     <input value={editCard.category ?? ''} onChange={(e) => setEditCard({ ...editCard, category: e.target.value })} placeholder="分类" />
                     <div className="edit-actions">
@@ -181,12 +273,30 @@ const Editor: React.FC = () => {
                         {cards.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                       </select>
                     </div>
+                    <div className="rel-pair" style={{ marginTop: 4 }}>
+                      <span style={{ color: '#888', fontSize: 12 }}>第三卡牌(可选)</span>
+                      <select
+                        value={editRelation.cardC ?? ''}
+                        onChange={(e) => setEditRelation({ ...editRelation, cardC: e.target.value || undefined })}
+                        style={{ marginLeft: 8 }}
+                      >
+                        <option value="">无</option>
+                        {cards.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                      </select>
+                    </div>
                     <select value={editRelation.type} onChange={(e) => setEditRelation({ ...editRelation, type: e.target.value as RelationType })}>
                       {Object.entries(RELATION_LABELS).map(([k, v]) => (
                         <option key={k} value={k}>{v} (+{RELATION_SCORES[k as RelationType]})</option>
                       ))}
                     </select>
                     <input value={editRelation.explanation} onChange={(e) => setEditRelation({ ...editRelation, explanation: e.target.value })} placeholder="关联说明" />
+                    <input
+                      type="number"
+                      value={editRelation.score ?? ''}
+                      onChange={(e) => setEditRelation({ ...editRelation, score: e.target.value ? parseInt(e.target.value) : undefined })}
+                      placeholder="分数(可选)"
+                      style={{ width: 100 }}
+                    />
                     <div className="edit-actions">
                       <button className="btn btn-sm btn-primary" onClick={() => editRelation && saveRelation(editRelation)}>保存</button>
                       <button className="btn btn-sm btn-secondary" onClick={() => setEditRelation(null)}>取消</button>
@@ -194,9 +304,13 @@ const Editor: React.FC = () => {
                   </div>
                 ) : (
                   <div className="editor-list-row">
-                    <span className="list-name">{getCardName(rel.cardA)} ↔ {getCardName(rel.cardB)}</span>
+                    <span className="list-name">
+                      {getCardName(rel.cardA)} ↔ {getCardName(rel.cardB)}
+                      {rel.cardC ? ` ↔ ${getCardName(rel.cardC)}` : ''}
+                    </span>
                     <span className="list-cat">[{RELATION_LABELS[rel.type] || rel.type}]</span>
                     <span className="list-desc">{rel.explanation}</span>
+                    <span className="list-score" style={{ color: '#fa0', fontSize: 12, marginLeft: 4 }}>{rel.score != null ? `${rel.score}分` : ''}</span>
                     <div className="list-actions">
                       <button className="btn btn-sm btn-secondary" onClick={() => setEditRelation(rel)}>编辑</button>
                       <button className="btn btn-sm btn-danger" onClick={() => deleteRelation(idx)}>删除</button>
