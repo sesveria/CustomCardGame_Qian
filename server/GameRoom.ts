@@ -72,8 +72,8 @@ function recalcSettlementScore(
 export function computeSettlementRelations(
   settlement: Card[],
   relations: Relation[],
-): { cardA: string; cardB: string; cardC?: string; type: string; explanation: string; score: number }[] {
-  const result: { cardA: string; cardB: string; cardC?: string; type: string; explanation: string; score: number }[] = [];
+): { cardA: string; cardB: string; cardC?: string; type: RelationType; explanation: string; score: number }[] {
+  const result: { cardA: string; cardB: string; cardC?: string; type: RelationType; explanation: string; score: number }[] = [];
   const ids = new Set(settlement.map(c => c.id));
   for (const r of relations) {
     if (!ids.has(r.cardA) || !ids.has(r.cardB)) continue;
