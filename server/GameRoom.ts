@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import type { Card, Deck, Relation, GameStateForPlayer, MatchedPairPublic, PlayerSlot } from '../shared/protocol.js';
+import type { Card, Deck, Relation, RelationType, GameStateForPlayer, MatchedPairPublic, PlayerSlot } from '../shared/protocol.js';
 import { RELATION_SCORES } from '../shared/protocol.js';
 
 const HAND_SIZE = 5;
