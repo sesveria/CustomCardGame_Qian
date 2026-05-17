@@ -117,6 +117,7 @@ export class LobbyManager {
     });
 
     room.markBot(botUserId, (state) => botAi.handleState(state));
+    room.markBotGame();
 
     for (const d of this.userDecks) room.setDeck(d.meta.name, d);
 

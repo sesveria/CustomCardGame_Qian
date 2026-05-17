@@ -19,6 +19,7 @@ export interface GameStateForPlayer {
   coinRevealed?: boolean;
   selectedHandCard?: Card | null; hasMatchingPoolCard?: boolean;
   isDiscarding?: boolean;
+  isBotGame?: boolean;
 }
 export type GamePhaseCS = 'coin_toss' | 'deck_select' | 'playing' | 'selecting-card' | 'matching' | 'round_over' | 'match_over';
 export interface MatchResult { success: boolean; relation?: Relation; explanation?: string; score: number; }

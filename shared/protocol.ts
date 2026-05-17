@@ -19,6 +19,7 @@ export interface GameStateForPlayer {
   coinRevealed?: boolean;
   selectedHandCard?: Card | null; hasMatchingPoolCard?: boolean;
   isDiscarding?: boolean;
+  isBotGame?: boolean;
 }
 export interface MatchResult { success: boolean; relation?: Relation; explanation?: string; score: number; }
 export interface MatchedPairPublic { cardA: string; cardB: string; relationType: string; explanation: string; player: PlayerSlot; }

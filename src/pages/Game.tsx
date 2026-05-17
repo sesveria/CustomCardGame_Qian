@@ -101,8 +101,8 @@ const Game: React.FC = () => {
         <div className="popup-overlay">
           {!game.coinRevealed ? (
             <div className="popup popup-coin">
-              <div className="popup-title">抛硬币决定选牌权</div>
-              <div className="popup-subtitle">猜对的一方优先选择卡组</div>
+              <div className="popup-title">{game.isBotGame ? '抛硬币决定先手权' : '抛硬币决定选牌权'}</div>
+              <div className="popup-subtitle">{game.isBotGame ? '猜对的一方先出牌' : '猜对的一方优先选择卡组'}</div>
 
               <div style={{
                 width: 100, height: 100, margin: '20px auto',
@@ -171,9 +171,9 @@ const Game: React.FC = () => {
                   background: game.coinGuessed ? 'rgba(39,174,96,.15)' : 'rgba(192,57,43,.15)',
                   color: game.coinGuessed ? 'var(--success)' : 'var(--fail)',
                 }}>
-                  {game.coinGuessed ? '你猜对了！有优先选牌权' : '你没猜对，对方先选卡组'}
+                  {game.isBotGame ? (game.coinGuessed ? '你猜对了！你先出牌' : '你没猜对，对方先出牌') : (game.coinGuessed ? '你猜对了！有优先选牌权' : '你没猜对，对方先选卡组')}
                 </span>
-                <p style={{ fontSize: 13, color: '#a0a0b0', marginTop: 10 }}>即将进入选牌阶段...</p>
+                <p style={{ fontSize: 13, color: '#a0a0b0', marginTop: 10 }}>{game.isBotGame ? '即将开始对局...' : '即将进入选牌阶段...'}</p>
               </div>
             </div>
           )}

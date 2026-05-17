@@ -104,6 +104,7 @@ export class GameRoom {
 
   private botUserId: string | null = null;
   private onBotState: ((state: GameStateForPlayer) => void) | null = null;
+  private isBotGame: boolean = false;
 
   constructor(
     id: string,
@@ -123,6 +124,10 @@ export class GameRoom {
     this.onBotState = onState;
   }
 
+  markBotGame(): void {
+    this.isBotGame = true;
+  }
+
   setDeck(id: string, deck: Deck): void { this.decks[id] = deck; }
 
   setCallbacks(
@@ -133,14 +138,24 @@ export class GameRoom {
   }
 
   startMatch(): void {
-    this.coinResult = Math.random() < 0.5 ? 'heads' : 'tails';
     this.coinGuesses = {};
     this.coinRevealed = false;
-    this.phase = 'coin_toss';
     this.round = 0;
     if (this.coinTimer) clearTimeout(this.coinTimer);
-    this.coinTimer = setTimeout(() => this.resolveCoinToss(), 30_000);
-    this.pushBoth();
+
+    if (this.isBotGame) {
+      // Bot game: player (player1) selects deck first, then coin toss for first mover
+      this.deckSelector = 'player1';
+      this.selectedDecks = {};
+      this.phase = 'deck_select';
+      this.pushBoth();
+    } else {
+      // PvP: coin toss determines deck selector
+      this.coinResult = Math.random() < 0.5 ? 'heads' : 'tails';
+      this.phase = 'coin_toss';
+      this.coinTimer = setTimeout(() => this.resolveCoinToss(), 30_000);
+      this.pushBoth();
+    }
   }
 
   submitCoinGuess(playerId: string, guess: 'heads' | 'tails'): void {
@@ -150,7 +165,11 @@ export class GameRoom {
     this.pushBoth();
     if (this.coinGuesses.player1 && this.coinGuesses.player2) {
       if (this.coinTimer) clearTimeout(this.coinTimer);
-      this.resolveCoinToss();
+      if (this.isBotGame) {
+        this.resolveCoinTossForBot();
+      } else {
+        this.resolveCoinToss();
+      }
     }
   }
 
@@ -173,6 +192,23 @@ export class GameRoom {
     }, 2500);
   }
 
+  private resolveCoinTossForBot(): void {
+    if (this.coinRevealed) return;
+    this.coinRevealed = true;
+
+    // In bot game, coin toss only decides who plays first (currentPlayer)
+    // deckSelector stays as 'player1' (player always selects deck)
+    const p1Win = this.coinGuesses.player1 === this.coinResult;
+    this.deckSelector = p1Win ? 'player1' : 'player2';
+
+    this.pushBoth();
+
+    setTimeout(() => {
+      this.round = 1;
+      this.startRound();
+    }, 2500);
+  }
+
   selectDeck(playerId: string, deckId: string): void {
     const slot = this.slot(playerId);
     if (!slot || this.phase !== 'deck_select' || slot !== this.deckSelector) return;
@@ -182,8 +218,19 @@ export class GameRoom {
     if (!this.selectedDecks[oppSlot]) {
       this.selectedDecks[oppSlot] = this.deckIds.find(d => d !== deckId) ?? deckId;
     }
-    this.round = 1;
-    this.startRound();
+
+    if (this.isBotGame) {
+      // Bot game: after player picks deck, coin toss for who plays first
+      this.coinResult = Math.random() < 0.5 ? 'heads' : 'tails';
+      this.coinGuesses = {};
+      this.coinRevealed = false;
+      this.phase = 'coin_toss';
+      this.coinTimer = setTimeout(() => this.resolveCoinTossForBot(), 30_000);
+      this.pushBoth();
+    } else {
+      this.round = 1;
+      this.startRound();
+    }
   }
 
   private startRound(): void {
@@ -450,6 +497,7 @@ export class GameRoom {
       coinRevealed: this.coinRevealed || undefined,
       mySlot: slot,
       isDiscarding: false,
+      isBotGame: this.isBotGame || undefined,
     };
 
     if (gs) {
