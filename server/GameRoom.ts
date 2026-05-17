@@ -69,6 +69,24 @@ function recalcSettlementScore(
   return total;
 }
 
+export function computeSettlementRelations(
+  settlement: Card[],
+  relations: Relation[],
+): { cardA: string; cardB: string; cardC?: string; type: string; explanation: string; score: number }[] {
+  const result: { cardA: string; cardB: string; cardC?: string; type: string; explanation: string; score: number }[] = [];
+  const ids = new Set(settlement.map(c => c.id));
+  for (const r of relations) {
+    if (!ids.has(r.cardA) || !ids.has(r.cardB)) continue;
+    if (r.cardC && !ids.has(r.cardC)) continue;
+    result.push({
+      cardA: r.cardA, cardB: r.cardB, cardC: r.cardC,
+      type: r.type, explanation: r.explanation,
+      score: r.score ?? (RELATION_SCORES[r.type] ?? 3),
+    });
+  }
+  return result;
+}
+
 function drawFromPile(pile: Card[], needed: number): { remaining: Card[]; drawn: Card[] } {
   if (needed <= 0) return { remaining: pile, drawn: [] };
   if (pile.length <= needed) return { remaining: [], drawn: [...pile] };
@@ -483,6 +501,7 @@ export class GameRoom {
       myScore: 0, opponentScore: 0,
       myPairScore: 0, opponentPairScore: 0,
       mySettlement: [], opponentSettlement: [],
+      mySettlementRelations: [], opponentSettlementRelations: [],
       lastMatchResult: null, matchedPairs: [],
       roundNumber: this.round,
       myRoundWins: 0,
@@ -512,6 +531,8 @@ export class GameRoom {
       base.opponentScore = gs.scores[oppSlot] ?? 0;
       base.mySettlement = gs.settlement[slot] ?? [];
       base.opponentSettlement = gs.settlement[oppSlot] ?? [];
+      base.mySettlementRelations = computeSettlementRelations(gs.settlement[slot] ?? [], gs.deck.relations);
+      base.opponentSettlementRelations = computeSettlementRelations(gs.settlement[oppSlot] ?? [], gs.deck.relations);
       base.lastMatchResult = gs.lastMatchResult ?? null;
       base.matchedPairs = gs.matchedPairs;
       base.isDiscarding = gs.isDiscarding;

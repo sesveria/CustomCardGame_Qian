@@ -10,6 +10,7 @@ interface CardProps {
   matched?: boolean;
   size?: 'small' | 'medium' | 'large';
   onClick?: () => void;
+  showDescription?: boolean;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -27,6 +28,7 @@ const CardComponent: React.FC<CardProps> = ({
   inPool = false,
   matched = false,
   size = 'medium',
+  showDescription = true,
   onClick,
 }) => {
   const color = CATEGORY_COLORS[card.category ?? ''] ?? '#666';
@@ -47,7 +49,7 @@ const CardComponent: React.FC<CardProps> = ({
           {card.category ?? '?'}
         </div>
         <div className="card-name">{card.name}</div>
-        {card.description && size !== 'small' && (
+        {card.description && showDescription && size !== 'small' && (
           <div className="card-desc">{card.description}</div>
         )}
       </div>

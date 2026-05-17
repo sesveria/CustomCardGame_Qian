@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useConnection } from '../store/connection';
@@ -37,6 +37,7 @@ const Game: React.FC = () => {
   const isMyTurn = displayPhase === 'deck_select' ? (game.deckSelector === game.mySlot) : (game.currentPlayer === game.mySlot);
   const COIN_LABEL: Record<string, string> = { 'heads': '正面', 'tails': '反面' };
   const isDiscardingMode = !!game.isDiscarding;
+  const [showDesc, setShowDesc] = useState(true);
 
   const mySettScore = (game.myScore ?? 0) - (game.myPairScore ?? 0);
   const oppSettScore = (game.opponentScore ?? 0) - (game.opponentPairScore ?? 0);
@@ -54,9 +55,18 @@ const Game: React.FC = () => {
     <div className="page page-game">
       <div className="game-header">
         <div className="game-phase">{phaseLabel[displayPhase] || displayPhase}</div>
-        <button className="btn btn-sm btn-secondary" onClick={() => navigate('/lobby')}>
-          ← 大厅
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            className="btn btn-sm btn-secondary"
+            onClick={() => setShowDesc(!showDesc)}
+            style={{ fontSize: 12 }}
+          >
+            {showDesc ? '隐藏解释' : '显示解释'}
+          </button>
+          <button className="btn btn-sm btn-secondary" onClick={() => navigate('/lobby')}>
+            ← 大厅
+          </button>
+        </div>
       </div>
 
       {/* Scoreboard with progress bars */}
@@ -215,7 +225,7 @@ const Game: React.FC = () => {
               </div>
               <div className="sett-cards">
                 {(game.mySettlement ?? []).map(c => (
-                  <CardComponent key={c.id} card={c} size="small" />
+                  <CardComponent key={c.id} card={c} size="small" showDescription={showDesc} />
                 ))}
               </div>
             </div>
@@ -225,7 +235,7 @@ const Game: React.FC = () => {
               </div>
               <div className="sett-cards">
                 {(game.opponentSettlement ?? []).map(c => (
-                  <CardComponent key={c.id} card={c} size="small" />
+                  <CardComponent key={c.id} card={c} size="small" showDescription={showDesc} />
                 ))}
               </div>
             </div>
@@ -253,6 +263,7 @@ const Game: React.FC = () => {
                     card={card}
                     size="medium"
                     inPool
+                    showDescription={showDesc}
                     disabled={!canPick}
                     onClick={() => canPick && send({ type: 'game_pick_public', cardId: card.id })}
                   />
@@ -301,6 +312,7 @@ const Game: React.FC = () => {
                     inHand
                     selected={isSelected}
                     disabled={!canSelect}
+                    showDescription={showDesc}
                     onClick={() => canSelect && send({ type: 'game_pick_hand', cardId: card.id })}
                   />
                 );
@@ -366,6 +378,21 @@ const Game: React.FC = () => {
                 ))}
               </div>
             </div>
+            {(game.mySettlementRelations && game.mySettlementRelations.length > 0) && (
+              <div className="gameover-pairs" style={{ marginTop: 12 }}>
+                <h3>🧠 你的结算区关联 ({game.mySettlementRelations.length} 条)</h3>
+                <div className="pairs-list">
+                  {game.mySettlementRelations.map((r, i) => (
+                    <div key={i} className="pair-item pair-player1">
+                      <span className="pair-cards">{r.cardA} ↔ {r.cardB}{r.cardC ? ' ↔ ' + r.cardC : ''}</span>
+                      <span className="pair-type">[{RELATION_LABELS[r.type] || r.type}]</span>
+                      <span className="pair-score">+{r.score}分</span>
+                      <span className="pair-explanation">{r.explanation}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <button className="popup-btn" onClick={() => navigate('/lobby')}>返回大厅</button>
           </div>
         </div>

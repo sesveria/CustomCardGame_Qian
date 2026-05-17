@@ -6,12 +6,18 @@ export interface Relation { cardA: string; cardB: string; cardC?: string; type: 
 export interface DeckMeta { name: string; description: string; author: string; version: string; }
 export interface Deck { meta: DeckMeta; cards: Card[]; relations: Relation[]; }
 export type PlayerSlot = 'player1' | 'player2';
+export interface SettlementRelation {
+  cardA: string; cardB: string; cardC?: string;
+  type: RelationType; explanation: string; score: number;
+}
+
 export interface GameStateForPlayer {
   phase: 'coin_toss' | 'deck_select' | 'playing' | 'selecting-card' | 'matching' | 'round_over' | 'match_over';
   currentPlayer: PlayerSlot | null; myHand: Card[]; opponentHandCount: number; publicPool: Card[]; drawPileCount: number;
   myScore: number; opponentScore: number;
   myPairScore: number; opponentPairScore: number;
   mySettlement: Card[]; opponentSettlement: Card[];
+  mySettlementRelations?: SettlementRelation[]; opponentSettlementRelations?: SettlementRelation[];
   lastMatchResult: MatchResult | null; matchedPairs: MatchedPairPublic[];
   roundNumber: number; myRoundWins: number; opponentRoundWins: number; deckSelector: PlayerSlot;
   availableDeckIds: string[]; myDeckId: string | null; opponentDeckId: string | null;
