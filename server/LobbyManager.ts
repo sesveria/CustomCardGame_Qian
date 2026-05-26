@@ -107,7 +107,7 @@ export class LobbyManager {
     const botAi = new BotAI();
     botAi.bind((msg: ClientMessage) => {
       switch (msg.type) {
-        case 'game_coin_guess': room.submitCoinGuess(botUserId, msg.guess); break;
+        // game_coin_guess removed (coin toss disabled)
         case 'game_select_deck': room.selectDeck(botUserId, msg.deckId); break;
         case 'game_pick_hand': room.pickHandCard(botUserId, msg.cardId); break;
         case 'game_pick_public': room.pickPublicCard(botUserId, msg.cardId); break;

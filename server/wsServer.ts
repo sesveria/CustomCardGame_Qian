@@ -110,7 +110,7 @@ export function createWSServer(
       const room = lobbyManager.getRoomByUserId(userId);
       if (!room) { send({ type: 'game_error', message: '你不在任何对局中' }); return; }
 
-      if (msg.type === 'game_coin_guess') { room.submitCoinGuess(userId, msg.guess); return; }
+      // coin_toss removed
       if (msg.type === 'game_select_deck') { room.selectDeck(userId, msg.deckId); return; }
       if (msg.type === 'game_pick_hand') { room.pickHandCard(userId, msg.cardId); return; }
       if (msg.type === 'game_pick_public') { room.pickPublicCard(userId, msg.cardId); return; }

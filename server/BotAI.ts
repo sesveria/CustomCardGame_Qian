@@ -27,13 +27,6 @@ export class BotAI {
     if (!g || !s) return;
 
     switch (g.phase) {
-      case 'coin_toss':
-        if (!g.coinGuessed) {
-          const guess: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
-          s({ type: 'game_coin_guess', guess });
-        }
-        break;
-
       case 'deck_select':
         if (g.deckSelector === g.mySlot) {
           const idx = Math.floor(Math.random() * g.availableDeckIds.length);
@@ -45,31 +38,19 @@ export class BotAI {
         const isMe = g.currentPlayer === g.mySlot;
         if (!isMe) break;
 
-        if (g.isDiscarding) {
-          // Post-discard: pick a card from pool (can't be the discarded one)
-          if (g.publicPool.length > 0) {
-            // Pick random pool card
-            const pc = g.publicPool[Math.floor(Math.random() * g.publicPool.length)];
-            s({ type: 'game_pick_public', cardId: pc.id });
-          }
-        } else if (g.myHand.length > 0) {
+        if (g.myHand.length > 0) {
           // Choose a hand card
           const hc = g.myHand[Math.floor(Math.random() * g.myHand.length)];
           s({ type: 'game_pick_hand', cardId: hc.id });
 
-          // After a short delay either pick a public card or discard
+          // After a short delay, pick a public card (never discards)
           setTimeout(() => {
             const g2 = this.game;
             if (!g2 || g2.currentPlayer !== g2.mySlot || g2.isDiscarding) return;
 
             if (g2.publicPool.length > 0) {
-              // 70% pick public, 30% discard
-              if (Math.random() < 0.7) {
-                const pc = g2.publicPool[Math.floor(Math.random() * g2.publicPool.length)];
-                s({ type: 'game_pick_public', cardId: pc.id });
-              } else {
-                s({ type: 'game_discard_hand' });
-              }
+              const pc = g2.publicPool[Math.floor(Math.random() * g2.publicPool.length)];
+              s({ type: 'game_pick_public', cardId: pc.id });
             }
           }, 500);
         }

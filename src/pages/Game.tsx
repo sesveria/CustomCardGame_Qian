@@ -35,7 +35,6 @@ const Game: React.FC = () => {
 
   const displayPhase = game.phase;
   const isMyTurn = displayPhase === 'deck_select' ? (game.deckSelector === game.mySlot) : (game.currentPlayer === game.mySlot);
-  const COIN_LABEL: Record<string, string> = { 'heads': '正面', 'tails': '反面' };
   const isDiscardingMode = !!game.isDiscarding;
   const [showDesc, setShowDesc] = useState(true);
 
@@ -46,7 +45,7 @@ const Game: React.FC = () => {
   const oppPct = Math.round((game.opponentScore / totalScore) * 100);
 
   const phaseLabel: Record<string, string> = {
-    coin_toss: '抛硬币', deck_select: '选牌组', playing: '对战中',
+    deck_select: '选牌组', playing: '对战中',
     'selecting-card': '选牌中', matching: '判定中', round_over: '结束',
     match_over: '比赛结束',
   };
@@ -93,7 +92,7 @@ const Game: React.FC = () => {
         </div>
 
         <div className="sb-player">
-          <span className="sb-icon">🤖</span>
+          <span className="sb-icon">{game.isBotGame ? '🤖' : '🧑'}</span>
           <div>
             <span className="sb-name">对手</span>
             <span className={`sb-score ${game.opponentScore > game.myScore ? 'winning' : game.opponentScore < game.myScore ? 'losing' : ''}`}>
@@ -106,89 +105,6 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {/* ─── Coin Toss ─── */}
-      {displayPhase === 'coin_toss' && (
-        <div className="popup-overlay">
-          {!game.coinRevealed ? (
-            <div className="popup popup-coin">
-              <div className="popup-title">{game.isBotGame ? '抛硬币决定先手权' : '抛硬币决定选牌权'}</div>
-              <div className="popup-subtitle">{game.isBotGame ? '猜对的一方先出牌' : '猜对的一方优先选择卡组'}</div>
-
-              <div style={{
-                width: 100, height: 100, margin: '20px auto',
-                borderRadius: '50%', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                background: '#d4a017', border: '4px solid #a07808',
-                boxShadow: '0 0 24px rgba(255,200,0,.45)',
-              }}>
-                <span style={{ fontSize: 42, fontWeight: 900, color: '#6b4c00', lineHeight: 1 }}>?</span>
-              </div>
-
-              {game.coinGuessed ? (
-                <p style={{ fontSize: 14, color: '#a0a0b0', marginTop: 16 }}>
-                  你选了 <strong>{COIN_LABEL[game.coinMyGuess ?? 'heads']}</strong>，等待对手...
-                </p>
-              ) : (
-                <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 18 }}>
-                  <button
-                    className="coin-guess-btn heads"
-                    onClick={() => send({ type: 'game_coin_guess', guess: 'heads' })}
-                  >
-                    <span style={{ display:'inline-block',width:32,height:32,borderRadius:'50%',
-                      background:'#f5c842',border:'3px solid #b8860b',
-                      boxShadow:'0 0 12px rgba(245,200,66,.5)' }}></span>
-                    <span style={{ fontSize: 13, opacity: .8 }}>正面</span>
-                  </button>
-                  <button
-                    className="coin-guess-btn tails"
-                    onClick={() => send({ type: 'game_coin_guess', guess: 'tails' })}
-                  >
-                    <span style={{ display:'inline-block',width:32,height:32,borderRadius:'50%',
-                      background:'#c0c0c0',border:'3px solid #707070',
-                      boxShadow:'0 0 12px rgba(180,180,180,.5)' }}></span>
-                    <span style={{ fontSize: 13, opacity: .8 }}>反面</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="popup popup-coin">
-              <div style={{ textAlign: 'center' }}>
-                <div className="popup-title">硬币结果</div>
-
-                <div style={{
-                  width: 100, height: 100, margin: '20px auto',
-                  borderRadius: '50%', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  background: game.coinResult === 'heads' ? '#d4a017' : '#909090',
-                  border: game.coinResult === 'heads' ? '4px solid #a07808' : '4px solid #555',
-                  boxShadow: game.coinResult === 'heads' ? '0 0 24px rgba(255,200,0,.45)' : '0 0 24px rgba(180,180,180,.45)',
-                }}>
-                  <span style={{
-                    fontSize: 42, fontWeight: 900,
-                    color: game.coinResult === 'heads' ? '#6b4c00' : '#333',
-                    lineHeight: 1,
-                  }}>{game.coinResult === 'heads' ? '正' : '反'}</span>
-                </div>
-
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', margin: '12px 0 8px' }}>
-                  {game.coinResult === 'heads' ? '正面' : '反面'}
-                </div>
-
-                <span style={{
-                  fontSize: 16, fontWeight: 700, margin: '12px 0',
-                  padding: '6px 20px', borderRadius: 20, display: 'inline-block',
-                  background: game.coinGuessed ? 'rgba(39,174,96,.15)' : 'rgba(192,57,43,.15)',
-                  color: game.coinGuessed ? 'var(--success)' : 'var(--fail)',
-                }}>
-                  {game.isBotGame ? (game.coinGuessed ? '你猜对了！你先出牌' : '你没猜对，对方先出牌') : (game.coinGuessed ? '你猜对了！有优先选牌权' : '你没猜对，对方先选卡组')}
-                </span>
-                <p style={{ fontSize: 13, color: '#a0a0b0', marginTop: 10 }}>{game.isBotGame ? '即将开始对局...' : '即将进入选牌阶段...'}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 {/* ─── Deck Select ─── */}
       {displayPhase === 'deck_select' && (
         <div className="popup-overlay">
@@ -215,7 +131,7 @@ const Game: React.FC = () => {
       )}
 
       {/* ─── Playing ─── */}
-      {displayPhase !== 'coin_toss' && displayPhase !== 'deck_select' && displayPhase !== 'match_over' && (
+      {displayPhase !== 'deck_select' && displayPhase !== 'match_over' && (
         <div className="game-main" style={{ padding: '8px 16px' }}>
           {/* Settlement zones */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
@@ -231,7 +147,7 @@ const Game: React.FC = () => {
             </div>
             <div className="settlement-zone opp-zone" style={{ flex: 1 }}>
               <div className="hand-label">
-                🤖 对手结算区 <span className="sett-score opp">{oppSettScore} 分</span>
+                {game.isBotGame ? '🤖' : '🧑'} 对手结算区 <span className="sett-score opp">{oppSettScore} 分</span>
               </div>
               <div className="sett-cards">
                 {(game.opponentSettlement ?? []).map(c => (
@@ -274,7 +190,7 @@ const Game: React.FC = () => {
 
           {/* Opponent hand */}
           <div className="hand-label" style={{ marginBottom: 4 }}>
-            🤖 对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span>
+            {game.isBotGame ? '🤖' : '🧑'} 对手手牌 <span className="hand-count">({game.opponentHandCount} 张)</span>
           </div>
 
           {/* Actions */}
@@ -361,7 +277,7 @@ const Game: React.FC = () => {
                 <span>{game.myScore} 分 (配对 {game.myPairScore ?? 0} + 结算 {mySettScore}，{game.mySettlement?.length ?? 0} 张)</span>
               </div>
               <div className="gs-row opp">
-                <span>🤖 对手</span>
+                <span>{game.isBotGame ? '🤖 对手' : '🧑 对手'}</span>
                 <span>{game.opponentScore} 分 (配对 {game.opponentPairScore ?? 0} + 结算 {oppSettScore}，{game.opponentSettlement?.length ?? 0} 张)</span>
               </div>
             </div>

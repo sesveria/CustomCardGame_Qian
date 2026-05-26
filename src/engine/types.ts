@@ -27,7 +27,7 @@ export interface GameStateForPlayer {
   isDiscarding?: boolean;
   isBotGame?: boolean;
 }
-export type GamePhaseCS = 'coin_toss' | 'deck_select' | 'playing' | 'selecting-card' | 'matching' | 'round_over' | 'match_over';
+export type GamePhaseCS = 'deck_select' | 'playing' | 'selecting-card' | 'matching' | 'round_over' | 'match_over';
 export interface MatchResult { success: boolean; relation?: Relation; explanation?: string; score: number; }
 export interface MatchedPairPublic { cardA: string; cardB: string; relationType: string; explanation: string; player: PlayerSlot; }
 export interface FriendInfo { userId: string; nickname: string; online: boolean; }
@@ -36,7 +36,7 @@ export type ClientMessage =
   | { type: 'friend_add'; target: string } | { type: 'friend_list' } | { type: 'match_start' } | { type: 'match_cancel' }
   | { type: 'match_vs_bot' }
   | { type: 'invite_send'; target: string } | { type: 'invite_accept'; inviterId: string } | { type: 'invite_decline'; inviterId: string }
-  | { type: 'game_coin_guess'; guess: 'heads' | 'tails' } | { type: 'game_select_deck'; deckId: string }
+  | { type: 'game_select_deck'; deckId: string }
   | { type: 'game_pick_hand'; cardId: string } | { type: 'game_pick_public'; cardId: string }
   | { type: 'game_discard_hand' }
   | { type: 'game_dismiss_popup' } | { type: 'game_concede' };
