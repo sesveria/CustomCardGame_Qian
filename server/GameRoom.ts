@@ -3,8 +3,6 @@ import type { Card, Deck, Relation, RelationType, GameStateForPlayer, MatchedPai
 import { RELATION_SCORES } from '../shared/protocol.js';
 
 const HAND_SIZE = 5;
-const POOL_SIZE = 8;
-
 interface FullGameState {
   deck: Deck;
   drawPile: Card[];
@@ -85,12 +83,6 @@ export function computeSettlementRelations(
     });
   }
   return result;
-}
-
-function drawFromPile(pile: Card[], needed: number): { remaining: Card[]; drawn: Card[] } {
-  if (needed <= 0) return { remaining: pile, drawn: [] };
-  if (pile.length <= needed) return { remaining: [], drawn: [...pile] };
-  return { remaining: pile.slice(needed), drawn: pile.slice(0, needed) };
 }
 
 function opp(p: PlayerSlot): PlayerSlot {
@@ -202,13 +194,14 @@ export class GameRoom {
     if (!activeDeck) return;
 
     const shuffled = shuffle([...activeDeck.cards]);
-    const pool = shuffled.splice(0, POOL_SIZE);
     const hand1 = shuffled.splice(0, HAND_SIZE);
     const hand2 = shuffled.splice(0, HAND_SIZE);
+    // ALL remaining cards go to public pool (no draw pile)
+    const pool = shuffled;
 
     this.gameState = {
       deck: activeDeck,
-      drawPile: shuffled,
+      drawPile: [],
       publicPool: pool,
       hands: { player1: hand1, player2: hand2 },
       settlement: { player1: [], player2: [] },
@@ -261,11 +254,6 @@ export class GameRoom {
       gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
       gs.hands[slot].push(poolCard);
 
-      // Refill public pool after taking a card
-      const discRefill = drawFromPile(gs.drawPile, 1);
-      gs.drawPile = discRefill.remaining;
-      gs.publicPool = shuffle([...gs.publicPool, ...discRefill.drawn]);
-
       gs.isDiscarding = false;
       gs.discardedCardId = null;
       gs.selectedHandCard = null;
@@ -305,11 +293,6 @@ export class GameRoom {
 
     const settScore = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
     gs.scores[slot] = gs.pairScores[slot] + settScore;
-
-    // Refill public pool then shuffle so new cards don't always appear at the end
-    const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
-    gs.drawPile = remaining;
-    gs.publicPool = shuffle([...gs.publicPool, ...drawn]);
 
     gs.selectedHandCard = null;
 
