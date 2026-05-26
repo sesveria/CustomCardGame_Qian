@@ -168,7 +168,7 @@ const Game: React.FC = () => {
           <div className="public-pool" style={{ marginBottom: 10 }}>
             <div className="hand-label">
               🃏 公共牌池
-              <span className="hand-count">({game.publicPool.length} 张)</span>
+              <span className="hand-count">({game.publicPool.length} 张 · 牌堆 {game.drawPileCount})</span>
             </div>
             <div className="hand-cards">
               {game.publicPool.map((card) => {
