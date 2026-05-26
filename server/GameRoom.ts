@@ -109,6 +109,7 @@ export class GameRoom {
 
   round: number = 0;
   deckSelector: PlayerSlot = 'player1';
+  firstMover: PlayerSlot = 'player1';
   phase: RoomPhaseType = 'deck_select';
   gameState: FullGameState | null = null;
 
@@ -156,13 +157,15 @@ export class GameRoom {
     this.selectedDecks = {};
 
     if (this.isBotGame) {
-      // Bot game: player (player1) selects deck, then random first mover
+      // Bot game: player (player1) selects deck, first mover decided after
       this.deckSelector = 'player1';
       this.phase = 'deck_select';
       this.pushBoth();
     } else {
-      // PvP: randomly pick deck selector (same as first mover)
-      this.deckSelector = Math.random() < 0.5 ? 'player1' : 'player2';
+      // PvP: random pick both deck selector and first mover (same person)
+      const r = Math.random() < 0.5 ? 'player1' as PlayerSlot : 'player2' as PlayerSlot;
+      this.deckSelector = r;
+      this.firstMover = r;
       this.phase = 'deck_select';
       this.pushBoth();
     }
@@ -181,18 +184,20 @@ export class GameRoom {
     }
 
     if (this.isBotGame) {
-      // Bot game: player picked deck, randomly decide first mover
-      this.deckSelector = Math.random() < 0.5 ? 'player1' : 'player2';
+      // Bot game: player picked deck, randomly decide first mover (don't touch deckSelector)
+      this.firstMover = Math.random() < 0.5 ? 'player1' : 'player2';
       this.round = 1;
       this.startRound();
     } else {
+      this.firstMover = this.deckSelector;
       this.round = 1;
       this.startRound();
     }
   }
 
   private startRound(): void {
-    const selDeckId = this.selectedDecks[this.deckSelector] ?? this.deckIds[0];
+    const deckChooser = this.deckSelector;
+    const selDeckId = this.selectedDecks[deckChooser] ?? this.deckIds[0];
     const activeDeck = this.decks[selDeckId];
     if (!activeDeck) return;
 
@@ -209,7 +214,7 @@ export class GameRoom {
       settlement: { player1: [], player2: [] },
       pairScores: { player1: 0, player2: 0 },
       scores: { player1: 0, player2: 0 },
-      currentPlayer: this.deckSelector,
+      currentPlayer: this.firstMover,
       selectedHandCard: null,
       matchedPairs: [],
       lastMatchResult: null,
@@ -346,7 +351,7 @@ export class GameRoom {
 
     // The "second mover" is the coin-toss loser (plays second in each round).
     // Game should only end after the second mover completes their action.
-    const secondMover = opp(this.deckSelector);
+    const secondMover = opp(this.firstMover);
     const nextPlayer = opp(slot);
 
     if (gs.pendingGameEnd) {
