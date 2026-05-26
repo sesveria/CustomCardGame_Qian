@@ -256,6 +256,11 @@ export class GameRoom {
       gs.publicPool = gs.publicPool.filter(c => c.id !== cardId);
       gs.hands[slot].push(poolCard);
 
+      // Refill public pool after taking a card
+      const discRefill = drawFromPile(gs.drawPile, 1);
+      gs.drawPile = discRefill.remaining;
+      gs.publicPool = shuffle([...gs.publicPool, ...discRefill.drawn]);
+
       gs.isDiscarding = false;
       gs.discardedCardId = null;
       gs.selectedHandCard = null;
@@ -296,10 +301,10 @@ export class GameRoom {
     const settScore = recalcSettlementScore(gs.settlement[slot], gs.deck.relations, RELATION_SCORES);
     gs.scores[slot] = gs.pairScores[slot] + settScore;
 
-    // Refill public pool
+    // Refill public pool then shuffle so new cards don't always appear at the end
     const { remaining, drawn } = drawFromPile(gs.drawPile, 1);
     gs.drawPile = remaining;
-    gs.publicPool = [...gs.publicPool, ...drawn];
+    gs.publicPool = shuffle([...gs.publicPool, ...drawn]);
 
     gs.selectedHandCard = null;
 
