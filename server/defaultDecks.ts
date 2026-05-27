@@ -262,15 +262,10 @@ const englishDeck: Deck = {
 
 
 export async function ensureDefaultDecks(store: FileStore): Promise<void> {
-  const existing = store.listJSON('decks');
+  // Always overwrite so disk JSON stays in sync with defaultDecks.ts
+  await store.writeJSON('decks/初中物理 — 力学.json', physicsDeck);
+  console.log('  ✓ 已同步默认卡组: 初中物理 — 力学');
 
-  if (!existing.includes('初中物理 — 力学')) {
-    await store.writeJSON('decks/初中物理 — 力学.json', physicsDeck);
-    console.log('  ✓ 已创建默认卡组: 初中物理 — 力学');
-  }
-
-  if (!existing.includes('高考英语 — 话题词汇')) {
-    await store.writeJSON('decks/高考英语 — 话题词汇.json', englishDeck);
-    console.log('  ✓ 已创建默认卡组: 高考英语 — 话题词汇');
-  }
+  await store.writeJSON('decks/高考英语 — 话题词汇.json', englishDeck);
+  console.log('  ✓ 已同步默认卡组: 高考英语 — 话题词汇');
 }
