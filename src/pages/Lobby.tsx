@@ -196,7 +196,18 @@ const Lobby: React.FC = () => {
           <p style={{ color: '#888', fontSize: 13, marginBottom: 12 }}>
             与机器人对战，或随机匹配在线玩家
           </p>
-          
+
+          {game && (
+            <div style={{ marginBottom: 12, textAlign: 'center' }}>
+              <div style={{ color: '#f5c842', fontSize: 13, marginBottom: 8 }}>
+                ⚠️ 你有一场未完成的对局
+              </div>
+              <button className="btn btn-primary btn-large" onClick={() => navigate('/game')}>
+                🃏 回到游戏
+              </button>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 12 }}>
             <button className="btn btn-primary btn-large" onClick={handleVsBot}>
               🤖 对战机器人
